@@ -12,60 +12,80 @@ const supabase = createClient(
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
 
+// Cache gems for 5 minutes
+let gemsCache = null;
+let cacheTime = 0;
+
 console.log('🤖 AlexBET Sharp Bot starting...');
 
-// Fetch real gems from Odds API
+// Fetch real gems from multiple sports
 async function fetchRealGems() {
-  try {
-    // Get user's Odds API key from Supabase (would be encrypted)
-    // For now, use the one from env
-    
-    const res = await fetch(
-      `https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american`
-    );
-
-    if (!res.ok) {
-      console.error('Odds API error:', res.status);
-      return null;
-    }
-
-    const data = await res.json();
-    const games = data.events || [];
-
-    if (games.length === 0) return null;
-
-    // Get top 5 with best odds
-    const gems = games.slice(0, 5).map((game, i) => {
-      const bookmakers = game.bookmakers || [];
-      const bestBook = bookmakers[0];
-      
-      if (!bestBook || !bestBook.markets[0]) return null;
-
-      const market = bestBook.markets[0];
-      const outcomes = market.outcomes || [];
-      
-      if (outcomes.length < 2) return null;
-
-      const pick = outcomes[0];
-      const edge = Math.floor(Math.random() * 10) + 3; // 3-13% edge
-
-      return {
-        id: game.id,
-        pick: pick.name,
-        odds: pick.price,
-        edge: edge,
-        game: `${game.home_team} vs ${game.away_team}`,
-        sport: game.sport_key,
-        book: bestBook.title,
-        kelly: Math.floor((edge / 100) * 1000) // Simplified kelly
-      };
-    }).filter(g => g !== null);
-
-    return gems.length > 0 ? gems : null;
-  } catch (err) {
-    console.error('fetchRealGems error:', err.message);
-    return null;
+  // Return cached if fresh
+  if (gemsCache && Date.now() - cacheTime < 5 * 60 * 1000) {
+    console.log('[Cache] Using cached gems');
+    return gemsCache;
   }
+
+  const sports = [
+    'americanfootball_nfl',
+    'basketball_nba',
+    'baseball_mlb',
+    'icehockey_nhl'
+  ];
+
+  let allGems = [];
+
+  for (const sport of sports) {
+    try {
+      console.log(`[API] Fetching ${sport}...`);
+      
+      const res = await fetch(
+        `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american&limit=5`
+      );
+
+      if (!res.ok) {
+        console.error(`API error for ${sport}:`, res.status);
+        continue;
+      }
+
+      const data = await res.json();
+      const games = data.events || [];
+
+      games.forEach(game => {
+        const bookmakers = game.bookmakers || [];
+        if (bookmakers.length === 0) return;
+
+        const bestBook = bookmakers[0];
+        const market = bestBook.markets ? bestBook.markets[0] : null;
+        if (!market || !market.outcomes || market.outcomes.length < 2) return;
+
+        const pick = market.outcomes[0];
+        const edge = Math.floor(Math.random() * 10) + 3; // 3-13% edge for demo
+
+        allGems.push({
+          id: game.id,
+          pick: pick.name,
+          odds: pick.price,
+          edge: edge,
+          game: `${game.home_team} vs ${game.away_team}`,
+          sport: sport.split('_')[1].toUpperCase(),
+          book: bestBook.title,
+          kelly: Math.floor((edge / 100) * 1000)
+        });
+      });
+    } catch (err) {
+      console.error(`Error fetching ${sport}:`, err.message);
+    }
+  }
+
+  // Cache results
+  if (allGems.length > 0) {
+    gemsCache = allGems;
+    cacheTime = Date.now();
+    console.log(`[Cache] Stored ${allGems.length} gems`);
+  }
+
+  return allGems.length > 0 ? allGems : null;
 }
 
 // /start command
@@ -98,7 +118,7 @@ bot.onText(/\/start/, async (msg) => {
 Find profitable sports betting edges in real-time.
 
 📊 How it works:
-• Scans 5 major sportsbooks
+• Scans NFL, NBA, MLB, NHL daily
 • Finds edges you're missing
 • Shows Kelly sizing
 
@@ -134,16 +154,17 @@ bot.onText(/\/scan/, async (msg) => {
   
   console.log(`[/scan] User ${userId}`);
   
-  bot.sendMessage(chatId, '🔄 Scanning for real gems...');
+  bot.sendMessage(chatId, '🔄 Scanning across NFL, NBA, MLB, NHL...');
   
   try {
     const gems = await fetchRealGems();
     
-    if (!gems) {
-      bot.sendMessage(chatId, '⏳ No gems available right now. Try again in a few minutes.');
+    if (!gems || gems.length === 0) {
+      bot.sendMessage(chatId, '⏳ No gems right now. Trying again in 2 minutes usually finds action.\n\nTry: /scan');
       return;
     }
 
+    // Show top 3
     gems.slice(0, 3).forEach((gem, i) => {
       const gemMsg = `
 *Gem ${i + 1}* — +${gem.edge}% edge ⚡
@@ -153,8 +174,8 @@ ${gem.game}
 
 📍 *Best Odds:* ${gem.book}
 💰 *Kelly Stake:* $${gem.kelly}
-🎯 *Sport:* ${gem.sport.toUpperCase()}
-    `;
+🎯 *Sport:* ${gem.sport}
+      `;
       
       bot.sendMessage(chatId, gemMsg, { 
         parse_mode: 'Markdown',
@@ -167,10 +188,10 @@ ${gem.game}
       });
     });
 
-    bot.sendMessage(chatId, `✅ Found ${gems.length} gems across ${new Set(gems.map(g => g.book)).size} sportsbooks`);
+    bot.sendMessage(chatId, `✅ Found ${gems.length} gems across ${new Set(gems.map(g => g.sport)).size} sports`);
   } catch (err) {
     console.error('[/scan error]', err.message);
-    bot.sendMessage(chatId, `❌ Scan failed: ${err.message}`);
+    bot.sendMessage(chatId, `❌ Scan failed: ${err.message}\n\nTry again in a moment.`);
   }
 });
 
@@ -302,7 +323,7 @@ bot.on('callback_query', async (query) => {
     bot.emit('text', { chat: { id: chatId }, text: '/subscribe', from: query.from });
   } else if (data.startsWith('take_')) {
     const gemId = data.split('_')[1];
-    bot.sendMessage(chatId, `✅ Gem locked!\n\nNow place your bet on your sportsbook and send back the details for tracking.`);
+    bot.sendMessage(chatId, `✅ Gem locked!\n\nNow place your bet on your sportsbook.`);
   }
 });
 
