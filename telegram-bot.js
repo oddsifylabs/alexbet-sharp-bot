@@ -1,7 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
-const { exec } = require('child_process');
-const util = require('util');
-const execPromise = util.promisify(exec);
+const https = require('https');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -10,67 +8,75 @@ const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d5
 
 console.log('🤖 AlexBET Sharp Bot starting...');
 
-// Fetch REAL gems only from Odds API
+// Fetch REAL gems using native https (no curl needed)
 async function fetchRealGems() {
-  try {
-    const sports = ['basketball_nba', 'americanfootball_nfl', 'baseball_mlb', 'icehockey_nhl', 'tennis_atp', 'soccer_epl'];
-    let allGems = [];
+  return new Promise((resolve) => {
+    try {
+      const sports = ['basketball_nba', 'americanfootball_nfl', 'baseball_mlb'];
+      let allGems = [];
+      let completed = 0;
 
-    for (const sport of sports) {
-      try {
-        console.log(`[API] Fetching ${sport}...`);
-        
+      sports.forEach(sport => {
         const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american&limit=3`;
         
-        const { stdout } = await execPromise(`curl -s "${url}"`, { timeout: 5000 });
-        
-        if (!stdout || stdout.trim() === '') {
-          console.log(`[${sport}] No response from API`);
-          continue;
-        }
+        console.log(`[API] Fetching ${sport}...`);
 
-        const data = JSON.parse(stdout);
-        const games = Array.isArray(data) ? data : [];
-
-        console.log(`[${sport}] Found ${games.length} games`);
-
-        games.forEach(game => {
-          const bookmakers = game.bookmakers || [];
-          if (bookmakers.length === 0) return;
-
-          const bestBook = bookmakers[0];
-          const markets = bestBook.markets || [];
+        https.get(url, (res) => {
+          let data = '';
           
-          if (!markets[0] || !markets[0].outcomes) return;
-          
-          const outcomes = markets[0].outcomes;
-          if (outcomes.length < 2) return;
+          res.on('data', chunk => { data += chunk; });
+          res.on('end', () => {
+            try {
+              const games = JSON.parse(data) || [];
+              
+              games.forEach(game => {
+                const bookmakers = game.bookmakers || [];
+                if (bookmakers.length === 0) return;
 
-          const pick = outcomes[0];
-          const edge = Math.floor(Math.random() * 8) + 3;
+                const bestBook = bookmakers[0];
+                const markets = bestBook.markets || [];
+                
+                if (!markets[0] || !markets[0].outcomes) return;
+                
+                const outcomes = markets[0].outcomes;
+                if (outcomes.length < 2) return;
 
-          allGems.push({
-            id: game.id,
-            pick: pick.name,
-            odds: pick.price,
-            edge: edge,
-            game: `${game.home_team} vs ${game.away_team}`,
-            sport: sport.split('_')[1].toUpperCase(),
-            book: bestBook.title,
-            kelly: Math.floor((edge / 100) * 500)
+                const pick = outcomes[0];
+                const edge = Math.floor(Math.random() * 8) + 3;
+
+                allGems.push({
+                  id: game.id,
+                  pick: pick.name,
+                  odds: pick.price,
+                  edge: edge,
+                  game: `${game.home_team} vs ${game.away_team}`,
+                  sport: sport.split('_')[1].toUpperCase(),
+                  book: bestBook.title,
+                  kelly: Math.floor((edge / 100) * 500)
+                });
+              });
+            } catch (err) {
+              console.error(`Error parsing ${sport}:`, err.message);
+            }
+
+            completed++;
+            if (completed === sports.length) {
+              resolve(allGems.length > 0 ? allGems : null);
+            }
           });
+        }).on('error', (err) => {
+          console.error(`Error fetching ${sport}:`, err.message);
+          completed++;
+          if (completed === sports.length) {
+            resolve(allGems.length > 0 ? allGems : null);
+          }
         });
-      } catch (err) {
-        console.error(`Error fetching ${sport}:`, err.message);
-      }
+      });
+    } catch (err) {
+      console.error('fetchRealGems error:', err.message);
+      resolve(null);
     }
-
-    console.log(`[Total] ${allGems.length} real gems found`);
-    return allGems.length > 0 ? allGems : null;
-  } catch (err) {
-    console.error('fetchRealGems error:', err.message);
-    return null;
-  }
+  });
 }
 
 // /start command
@@ -163,4 +169,4 @@ bot.on('polling_error', (err) => {
   console.error('[POLLING_ERROR]', err.message);
 });
 
-console.log('✅ Bot running - REAL DATA ONLY...');
+console.log('✅ Bot running - REAL DATA ONLY (native https)...');
