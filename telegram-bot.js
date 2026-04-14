@@ -10,10 +10,18 @@ const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d5
 
 console.log('🤖 AlexBET Sharp Bot starting...');
 
-// Fetch real gems using curl
+// Demo gems (fallback when no live games)
+const demoGems = [
+  { pick: 'Kansas City Chiefs', odds: -110, edge: 7.2, game: 'KC vs Buffalo Bills (Demo)', sport: 'NFL', book: 'DraftKings', kelly: 75 },
+  { pick: 'Miami Heat', odds: -105, edge: 5.8, game: 'MIA vs Boston Celtics (Demo)', sport: 'NBA', book: 'FanDuel', kelly: 62 },
+  { pick: 'Under 216.5', odds: -110, edge: 6.3, game: 'Lakers vs Warriors (Demo)', sport: 'NBA', book: 'DraftKings', kelly: 68 },
+  { pick: 'Atlanta Braves', odds: -115, edge: 4.9, game: 'ATL vs NYM (Demo)', sport: 'MLB', book: 'BetMGM', kelly: 52 }
+];
+
+// Fetch real gems from Odds API
 async function fetchRealGems() {
   try {
-    const sports = ['basketball_nba', 'americanfootball_nfl', 'baseball_mlb'];
+    const sports = ['basketball_nba', 'americanfootball_nfl', 'baseball_mlb', 'icehockey_nhl'];
     let allGems = [];
 
     for (const sport of sports) {
@@ -22,7 +30,7 @@ async function fetchRealGems() {
         
         const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american&limit=2`;
         
-        const { stdout } = await execPromise(`curl -s "${url}"`);
+        const { stdout } = await execPromise(`curl -s "${url}"`, { timeout: 5000 });
         const data = JSON.parse(stdout);
         const games = data || [];
 
@@ -93,17 +101,21 @@ bot.onText(/\/scan/, async (msg) => {
   bot.sendMessage(chatId, '🔄 Fetching live odds...');
   
   try {
-    const gems = await fetchRealGems();
+    let gems = await fetchRealGems();
     
+    // Fallback to demo if no live games
     if (!gems || gems.length === 0) {
-      bot.sendMessage(chatId, '⏳ No gems available. Odds API returned no games.');
-      return;
+      console.log('[Fallback] Using demo gems (no live games scheduled)');
+      gems = demoGems;
+      bot.sendMessage(chatId, '📌 No live games right now. Showing demo gems:');
     }
 
     // Send gems
     gems.slice(0, 3).forEach((gem, i) => {
+      const demo = gem.game.includes('Demo') ? ' (DEMO)' : '';
+      
       bot.sendMessage(chatId, `
-*Gem ${i + 1}* ⚡ +${gem.edge}%
+*Gem ${i + 1}*${demo} ⚡ +${gem.edge}%
 
 *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
 ${gem.game}
