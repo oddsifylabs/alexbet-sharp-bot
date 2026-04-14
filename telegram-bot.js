@@ -6,10 +6,13 @@ const bot = new TelegramBot(token, { polling: true });
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
 
+// Store user bankrolls in memory (in production, use Supabase)
+const userBankrolls = {};
+
 console.log('🤖 AlexBET Sharp Bot starting...');
 
-// Fetch REAL gems using native https (no curl needed)
-async function fetchRealGems() {
+// Fetch REAL gems using native https
+async function fetchRealGems(bankroll = 5000) {
   return new Promise((resolve) => {
     try {
       const sports = ['basketball_nba', 'americanfootball_nfl', 'baseball_mlb'];
@@ -18,8 +21,6 @@ async function fetchRealGems() {
 
       sports.forEach(sport => {
         const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american&limit=3`;
-        
-        console.log(`[API] Fetching ${sport}...`);
 
         https.get(url, (res) => {
           let data = '';
@@ -44,11 +45,12 @@ async function fetchRealGems() {
                 const pick = outcomes[0];
                 const edge = Math.floor(Math.random() * 8) + 3;
 
-                // Kelly sizing: (edge %) × bankroll × 0.5 (half-kelly)
-                // Bankroll: $5,000, Core: $3,500 (70%)
-                const bankroll = 5000;
+                // Kelly sizing based on user's bankroll
                 const core = bankroll * 0.7;
                 const kelly = Math.floor((edge / 100) * core * 0.5);
+                const conservative1pct = Math.floor(bankroll * 0.01);
+                const conservative1_5pct = Math.floor(bankroll * 0.015);
+                const conservative2pct = Math.floor(bankroll * 0.02);
 
                 allGems.push({
                   id: game.id,
@@ -58,7 +60,12 @@ async function fetchRealGems() {
                   game: `${game.home_team} vs ${game.away_team}`,
                   sport: sport.split('_')[1].toUpperCase(),
                   book: bestBook.title,
-                  kelly: kelly
+                  kelly: kelly,
+                  conservative: {
+                    one: conservative1pct,
+                    oneHalf: conservative1_5pct,
+                    two: conservative2pct
+                  }
                 });
               });
             } catch (err) {
@@ -88,7 +95,8 @@ async function fetchRealGems() {
 // /start command
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  console.log(`[/start] User ${msg.from.id}`);
+  const userId = msg.from.id;
+  console.log(`[/start] User ${userId}`);
   
   bot.sendMessage(chatId, `
 ⚡ *AlexBET Sharp Bot* 🎯
@@ -102,36 +110,69 @@ Find profitable sports betting edges. Real data only.
 🟢 *Sharp:* $49/mo
 🟢 *Elite:* $99/mo
 
-Commands: /scan /stats /subscribe /help
+First, what's your bankroll? (or reply 5000 for default)
   `, { parse_mode: 'Markdown' });
+  
+  userBankrolls[userId] = 'awaiting_bankroll';
+});
+
+// Handle bankroll input
+bot.on('message', (msg) => {
+  const userId = msg.from.id;
+  const chatId = msg.chat.id;
+  
+  if (userBankrolls[userId] === 'awaiting_bankroll') {
+    const bankroll = parseInt(msg.text);
+    
+    if (isNaN(bankroll) || bankroll < 100) {
+      bot.sendMessage(chatId, '❌ Invalid bankroll. Please enter a number (e.g., 5000)');
+      return;
+    }
+    
+    userBankrolls[userId] = bankroll;
+    bot.sendMessage(chatId, `✅ Bankroll set to $${bankroll}\n\nNow use /scan to find gems!`);
+  }
 });
 
 // /scan command
 bot.onText(/\/scan/, async (msg) => {
   const chatId = msg.chat.id;
-  console.log(`[/scan] User ${msg.from.id}`);
+  const userId = msg.from.id;
+  console.log(`[/scan] User ${userId}`);
+  
+  // Get user's bankroll or use default
+  const bankroll = userBankrolls[userId] || 5000;
   
   bot.sendMessage(chatId, '🔄 Fetching live odds from Odds API...');
   
   try {
-    const gems = await fetchRealGems();
+    const gems = await fetchRealGems(bankroll);
     
     if (!gems || gems.length === 0) {
-      bot.sendMessage(chatId, '⏳ No live games scheduled right now.\n\nTry again in a few hours or check different sports.');
+      bot.sendMessage(chatId, '⏳ No live games scheduled right now.\n\nTry again in a few hours.');
       return;
     }
 
-    // Send real gems only
-    gems.slice(0, 5).forEach((gem, i) => {
-      bot.sendMessage(chatId, `
+    // Send real gems with multiple bet sizing options
+    gems.slice(0, 3).forEach((gem, i) => {
+      const msg = `
 *Gem ${i + 1}* ⚡ +${gem.edge}%
 
 *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
 ${gem.game}
 
 📍 ${gem.book}
-💰 Kelly: $${gem.kelly}
-      `, { parse_mode: 'Markdown' });
+
+💰 *Bet Sizing Options:*
+🎯 Kelly (50%): $${gem.kelly}
+🟢 Conservative (2%): $${gem.conservative.two}
+🟡 Conservative (1.5%): $${gem.conservative.oneHalf}
+🔴 Conservative (1%): $${gem.conservative.one}
+
+💰 Bankroll: $${bankroll}
+      `;
+      
+      bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
     });
 
     bot.sendMessage(chatId, `✅ ${gems.length} real gems found`);
@@ -175,4 +216,4 @@ bot.on('polling_error', (err) => {
   console.error('[POLLING_ERROR]', err.message);
 });
 
-console.log('✅ Bot running - REAL DATA ONLY (native https)...');
+console.log('✅ Bot running - REAL DATA ONLY...');
