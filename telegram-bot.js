@@ -30,7 +30,9 @@ async function fetchRealGems() {
     'americanfootball_nfl',
     'basketball_nba',
     'baseball_mlb',
-    'icehockey_nhl'
+    'icehockey_nhl',
+    'tennis_atp',
+    'soccer_epl'
   ];
 
   let allGems = [];
@@ -118,7 +120,7 @@ bot.onText(/\/start/, async (msg) => {
 Find profitable sports betting edges in real-time.
 
 📊 How it works:
-• Scans NFL, NBA, MLB, NHL daily
+• Scans NFL, NBA, MLB, NHL, Tennis, Soccer daily
 • Finds edges you're missing
 • Shows Kelly sizing
 
@@ -154,7 +156,7 @@ bot.onText(/\/scan/, async (msg) => {
   
   console.log(`[/scan] User ${userId}`);
   
-  bot.sendMessage(chatId, '🔄 Scanning across NFL, NBA, MLB, NHL...');
+  bot.sendMessage(chatId, '🔄 Scanning across NFL, NBA, MLB, NHL, Tennis, Soccer...');
   
   try {
     const gems = await fetchRealGems();
