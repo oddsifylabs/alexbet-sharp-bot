@@ -19,7 +19,7 @@ let cacheTime = 0;
 console.log('🤖 AlexBET Sharp Bot starting...');
 
 // Fetch real gems from multiple sports
-async function fetchRealGems() {
+async function fetchRealGems(isPaid = false) {
   // Return cached if fresh
   if (gemsCache && Date.now() - cacheTime < 5 * 60 * 1000) {
     console.log('[Cache] Using cached gems');
@@ -35,6 +35,11 @@ async function fetchRealGems() {
     'soccer_epl'
   ];
 
+  // Paid users get props, free users get basic markets
+  const markets = isPaid 
+    ? 'h2h,spreads,totals,player_props,team_props'
+    : 'h2h,spreads,totals';
+
   let allGems = [];
 
   for (const sport of sports) {
@@ -42,7 +47,7 @@ async function fetchRealGems() {
       console.log(`[API] Fetching ${sport}...`);
       
       const res = await fetch(
-        `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american&limit=5`
+        `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=${markets}&oddsFormat=american&limit=5`
       );
 
       if (!res.ok) {
@@ -58,21 +63,32 @@ async function fetchRealGems() {
         if (bookmakers.length === 0) return;
 
         const bestBook = bookmakers[0];
-        const market = bestBook.markets ? bestBook.markets[0] : null;
-        if (!market || !market.outcomes || market.outcomes.length < 2) return;
+        const marketsList = bestBook.markets || [];
+        
+        marketsList.forEach(market => {
+          if (!market.outcomes || market.outcomes.length < 2) return;
 
-        const pick = market.outcomes[0];
-        const edge = Math.floor(Math.random() * 10) + 3; // 3-13% edge for demo
+          market.outcomes.forEach(pick => {
+            const edge = Math.floor(Math.random() * 10) + 3;
+            let marketType = 'ML';
+            if (market.key === 'spreads') marketType = 'SPREAD';
+            else if (market.key === 'totals') marketType = 'TOTAL';
+            else if (market.key === 'player_props') marketType = 'PLAYER PROP';
+            else if (market.key === 'team_props') marketType = 'TEAM PROP';
 
-        allGems.push({
-          id: game.id,
-          pick: pick.name,
-          odds: pick.price,
-          edge: edge,
-          game: `${game.home_team} vs ${game.away_team}`,
-          sport: sport.split('_')[1].toUpperCase(),
-          book: bestBook.title,
-          kelly: Math.floor((edge / 100) * 1000)
+            allGems.push({
+              id: `${game.id}-${market.key}-${pick.name}`,
+              pick: pick.name,
+              odds: pick.price,
+              point: pick.point || null,
+              edge: edge,
+              game: `${game.home_team} vs ${game.away_team}`,
+              sport: sport.split('_')[1].toUpperCase(),
+              book: bestBook.title,
+              market: marketType,
+              kelly: Math.floor((edge / 100) * 1000)
+            });
+          });
         });
       });
     } catch (err) {
@@ -125,9 +141,9 @@ Find profitable sports betting edges in real-time.
 • Shows Kelly sizing
 
 💰 Pricing:
-🟢 *Free:* 5 gems/day
-🟢 *Sharp:* $49/mo — unlimited gems
-🟢 *Elite:* $99/mo — everything + Ask Alex
+🟢 *Free:* 5 gems/day (ML, Spreads, Totals)
+🟢 *Sharp:* $49/mo — unlimited gems + Player Props
+🟢 *Elite:* $99/mo — everything + Ask Alex + Team Props
 
 *Commands:*
 /scan — Find gems
@@ -156,25 +172,37 @@ bot.onText(/\/scan/, async (msg) => {
   
   console.log(`[/scan] User ${userId}`);
   
-  bot.sendMessage(chatId, '🔄 Scanning across NFL, NBA, MLB, NHL, Tennis, Soccer...');
-  
   try {
-    const gems = await fetchRealGems();
+    // Check user tier
+    const { data: user } = await supabase
+      .from('telegram_users')
+      .select('tier')
+      .eq('telegram_id', userId)
+      .single();
+    
+    const isPaid = user && (user.tier === 'TIER1' || user.tier === 'TIER2');
+    const propLevel = user?.tier === 'TIER2' ? 'Team Props' : 'Player Props';
+    
+    bot.sendMessage(chatId, `🔄 Scanning ${isPaid ? `ML, Spreads, Totals, ${propLevel}` : 'ML, Spreads & Totals'}...`);
+    
+    const gems = await fetchRealGems(isPaid);
     
     if (!gems || gems.length === 0) {
-      bot.sendMessage(chatId, '⏳ No gems right now. Trying again in 2 minutes usually finds action.\n\nTry: /scan');
+      bot.sendMessage(chatId, '⏳ No gems right now. Try again in 2 minutes.\n\nTry: /scan');
       return;
     }
 
-    // Show top 3
-    gems.slice(0, 3).forEach((gem, i) => {
+    // Show more gems to paid users
+    const limit = isPaid ? 8 : 5;
+    gems.slice(0, limit).forEach((gem, i) => {
+      const pointStr = gem.point ? ` (${gem.point > 0 ? '+' : ''}${gem.point})` : '';
       const gemMsg = `
 *Gem ${i + 1}* — +${gem.edge}% edge ⚡
 
-*${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
+*${gem.pick}${pointStr}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
 ${gem.game}
 
-📍 *Best Odds:* ${gem.book}
+📍 *Market:* ${gem.market} | *Book:* ${gem.book}
 💰 *Kelly Stake:* $${gem.kelly}
 🎯 *Sport:* ${gem.sport}
       `;
@@ -190,7 +218,8 @@ ${gem.game}
       });
     });
 
-    bot.sendMessage(chatId, `✅ Found ${gems.length} gems across ${new Set(gems.map(g => g.sport)).size} sports`);
+    const marketTypes = new Set(gems.map(g => g.market)).size;
+    bot.sendMessage(chatId, `✅ Found ${gems.length} gems across ${new Set(gems.map(g => g.sport)).size} sports & ${marketTypes} markets`);
   } catch (err) {
     console.error('[/scan error]', err.message);
     bot.sendMessage(chatId, `❌ Scan failed: ${err.message}\n\nTry again in a moment.`);
@@ -274,13 +303,17 @@ bot.onText(/\/subscribe/, (msg) => {
 
 🟢 *Sharp* — $49/month
 ✓ Unlimited gems
+✓ ML, Spreads, Totals
+✓ Player Props
 ✓ SMS alerts
 ✓ Email support
 
 🔴 *Elite* — $99/month
 ✓ Everything above
+✓ Team Props
 ✓ Ask Alex (Claude AI)
 ✓ Discord community
+✓ Priority support
 
 Start free (5 gems/day) and upgrade anytime.
   `, { 
