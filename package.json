@@ -1,0 +1,17 @@
+{
+  "name": "alexbet-sharp-bot",
+  "version": "1.0.0",
+  "description": "AlexBET Sharp Betting Telegram Bot",
+  "main": "telegram-bot.js",
+  "scripts": {
+    "start": "node telegram-bot.js",
+    "dev": "nodemon telegram-bot.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0",
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
