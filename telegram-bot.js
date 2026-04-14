@@ -44,6 +44,12 @@ async function fetchRealGems() {
                 const pick = outcomes[0];
                 const edge = Math.floor(Math.random() * 8) + 3;
 
+                // Kelly sizing: (edge %) × bankroll × 0.5 (half-kelly)
+                // Bankroll: $5,000, Core: $3,500 (70%)
+                const bankroll = 5000;
+                const core = bankroll * 0.7;
+                const kelly = Math.floor((edge / 100) * core * 0.5);
+
                 allGems.push({
                   id: game.id,
                   pick: pick.name,
@@ -52,7 +58,7 @@ async function fetchRealGems() {
                   game: `${game.home_team} vs ${game.away_team}`,
                   sport: sport.split('_')[1].toUpperCase(),
                   book: bestBook.title,
-                  kelly: Math.floor((edge / 100) * 500)
+                  kelly: kelly
                 });
               });
             } catch (err) {
