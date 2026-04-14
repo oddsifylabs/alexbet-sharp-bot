@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const ODDS_API_KEY = process.env.ODDS_API_KEY;
+const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
 
 console.log('🤖 AlexBET Sharp Bot starting...');
 
