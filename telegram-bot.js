@@ -197,6 +197,11 @@ bot.onText(/\/scan/, async (msg) => {
       return;
     }
 
+    // Build market breakdown before slicing top gems
+    const h2hCount = gems.filter(gem => gem.market === 'ML').length;
+    const spreadCount = gems.filter(gem => gem.market === 'Spread').length;
+    const totalCount = gems.filter(gem => gem.market === 'Total').length;
+
     // Sort gems by edge (highest first) and take top 5
     const topGems = gems.sort((a, b) => b.edge - a.edge).slice(0, 5);
     
