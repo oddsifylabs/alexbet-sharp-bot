@@ -6,6 +6,9 @@ const bot = new TelegramBot(token, { polling: true });
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
 
+// User timezones (stored per user)
+const userTimezones = {};
+
 // Sport league names and emojis
 const sportInfo = {
   'basketball_nba': { league: 'NBA', emoji: '🏀', name: 'Basketball' },
@@ -268,12 +271,36 @@ Track every bet with CLV analysis:
   `, { parse_mode: 'Markdown' });
 });
 
+// /timezone command
+bot.onText(/\/timezone/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  bot.sendMessage(chatId, `Select your timezone for game times:`, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: 'EST', callback_data: 'tz_est' }, { text: 'PST', callback_data: 'tz_pst' }],
+        [{ text: 'CST', callback_data: 'tz_cst' }, { text: 'GMT', callback_data: 'tz_gmt' }],
+        [{ text: 'IST', callback_data: 'tz_ist' }, { text: 'JST', callback_data: 'tz_jst' }],
+        [{ text: 'AEST', callback_data: 'tz_aest' }]
+      ]
+    }
+  });
+});
+
+// Handle timezone
+bot.on('callback_query', (q) => {
+  const userId = q.from.id;
+  const tzMap = { 'tz_est': 'America/New_York', 'tz_pst': 'America/Los_Angeles', 'tz_cst': 'America/Chicago', 'tz_gmt': 'Europe/London', 'tz_ist': 'Asia/Kolkata', 'tz_jst': 'Asia/Tokyo', 'tz_aest': 'Australia/Sydney' };
+  if (tzMap[q.data]) { userTimezones[userId] = tzMap[q.data]; bot.answerCallbackQuery(q.id, 'Timezone set'); }
+});
+
 // /help command
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
 /scan - Find gems
 /stats - Your performance
+/timezone - Set timezone
 /subscribe - Upgrade to paid
 /lite - Track bets
 /help - This menu
