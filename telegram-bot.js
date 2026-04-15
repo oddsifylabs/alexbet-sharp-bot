@@ -197,7 +197,7 @@ ${gem.game} (${gem.market})
       bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
     });
 
-    bot.sendMessage(chatId, `✅ ${gems.length} gems found across h2h, spreads, totals\n\n📝 Log entry odds in ALexBET Lite: https://alexbet-lite.netlify.app`);
+    bot.sendMessage(chatId, `✅ ${gems.length} gems found across h2h, spreads, totals\n\n📝 Log entry odds in ALexBET Lite: https://alexbetlite.netlify.app`);
   } catch (err) {
     console.error('[/scan error]', err.message);
     bot.sendMessage(chatId, `❌ Error: ${err.message}\n\n(Odds API may be down or rate-limited. Try again in a few minutes.`);
@@ -213,7 +213,7 @@ bot.onText(/\/stats/, (msg) => {
 📈 Win Rate: 62%
 🎯 Bets: 16
 
-💡 For detailed analytics, use ALexBET Lite: https://alexbet-lite.netlify.app
+💡 For detailed analytics, use ALexBET Lite: https://alexbetlite.netlify.app
   `, { parse_mode: 'Markdown' });
 });
 
@@ -225,7 +225,7 @@ bot.onText(/\/subscribe/, (msg) => {
 🟢 Sharp $49/mo (player props)
 🟡 Elite $99/mo (team props + Ask Alex)
 
-Become a beta tester first at: https://alexbet-lite.netlify.app
+Become a beta tester first at: https://alexbetlite.netlify.app
 
 Contact: support@alexbet.io
   `, { parse_mode: 'Markdown' });
@@ -239,7 +239,7 @@ bot.onText(/\/lite/, (msg) => {
 
 Track every bet with CLV analysis:
 
-🔗 https://alexbet-lite.netlify.app
+🔗 https://alexbetlite.netlify.app
 
 ✅ Log entry odds when you place bet
 ✅ Update closing odds when game starts
@@ -260,7 +260,7 @@ bot.onText(/\/help/, (msg) => {
 /lite - Track bets
 /help - This menu
 
-📝 Track bets: https://alexbet-lite.netlify.app
+📝 Track bets: https://alexbetlite.netlify.app
   `, { parse_mode: 'Markdown' });
 });
 
