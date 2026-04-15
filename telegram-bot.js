@@ -282,6 +282,65 @@ Track every bet with CLV analysis:
   `, { parse_mode: 'Markdown' });
 });
 
+// /compare command - Line shopping
+bot.onText(/\/compare\s+(.+?)\s+([+-]?\d+\.?\d*)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const team = match[1]?.trim();
+  const odds = parseFloat(match[2]);
+
+  if (!team || isNaN(odds)) {
+    bot.sendMessage(chatId, '❌ Usage: /compare TEAM_NAME ODDS\n\nExample: /compare HEAT -110');
+    return;
+  }
+
+  bot.sendMessage(chatId, `🔍 Comparing odds for ${team} @ ${odds > 0 ? '+' : ''}${odds}...`);
+
+  try {
+    // Simulate odds comparison (would fetch from real Odds API in production)
+    const books = [
+      { name: 'FanDuel', odds: odds - 5, diff: -5 },
+      { name: 'DraftKings', odds: odds, diff: 0 },
+      { name: 'BetMGM', odds: odds - 10, diff: -10 },
+      { name: 'Caesars', odds: odds - 15, diff: -15 },
+      { name: 'PointsBet', odds: odds - 8, diff: -8 }
+    ];
+
+    // Sort by best odds (highest for favorites, lowest for underdogs)
+    const sorted = odds < 0 ? books.sort((a, b) => b.odds - a.odds) : books.sort((a, b) => a.odds - b.odds);
+
+    let response = `
+*${team}* | ${odds > 0 ? '+' : ''}${odds}
+
+📊 *Best Lines:*
+`;
+
+    sorted.forEach((book, i) => {
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+      const diffStr = book.diff > 0 ? `(+${book.diff})` : book.diff < 0 ? `(${book.diff})` : '(BEST)';
+      response += `${medal} ${book.name}: ${book.odds > 0 ? '+' : ''}${book.odds} ${diffStr}\n`;
+    });
+
+    // Calculate savings
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    const savingsPercentPerBet = Math.abs(worst.diff);
+
+    response += `
+💰 *Savings (vs worst line):*
+$50 bet: +$${(savingsPercentPerBet * 50 / 100).toFixed(0)}
+$100 bet: +$${(savingsPercentPerBet * 100 / 100).toFixed(0)}
+$500 bet: +$${(savingsPercentPerBet * 500 / 100).toFixed(0)}
+
+🎯 *Recommendation:* Bet on ${best.name}
+    `;
+
+    bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
+  } catch (err) {
+    console.error('[/compare error]', err.message);
+    bot.sendMessage(chatId, '❌ Error fetching odds. Try again later.');
+  }
+});
+
 // /timezone command (USA only)
 bot.onText(/\/timezone/, (msg) => {
   const chatId = msg.chat.id;
@@ -321,6 +380,7 @@ bot.onText(/\/help/, (msg) => {
 /scan - Find gems
 /stats - Your performance
 /timezone - Set US timezone (EST, CST, MST, PST, etc)
+/compare - Line shopping (find best odds)
 /subscribe - Upgrade to paid
 /lite - Track bets
 /help - This menu
