@@ -45,6 +45,11 @@ async function fetchRealGems(bankroll = 5000) {
                 const pick = outcomes[0];
                 const edge = Math.floor(Math.random() * 8) + 3;
 
+                // Parse game date and time
+                const gameTime = new Date(game.commence_time);
+                const dateStr = gameTime.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+                const timeStr = gameTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
                 // Kelly sizing based on user's bankroll
                 const core = bankroll * 0.7;
                 const kelly = Math.floor((edge / 100) * core * 0.5);
@@ -58,6 +63,8 @@ async function fetchRealGems(bankroll = 5000) {
                   odds: pick.price,
                   edge: edge,
                   game: `${game.home_team} vs ${game.away_team}`,
+                  gameDate: dateStr,
+                  gameTime: timeStr,
                   sport: sport.split('_')[1].toUpperCase(),
                   book: bestBook.title,
                   kelly: kelly,
@@ -160,6 +167,8 @@ bot.onText(/\/scan/, async (msg) => {
 
 *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
 ${gem.game}
+
+📅 ${gem.gameDate} at ${gem.gameTime}
 
 📍 ${gem.book}
 
