@@ -282,6 +282,48 @@ Track every bet with CLV analysis:
   `, { parse_mode: 'Markdown' });
 });
 
+// Discord/Slack alert configuration
+let alertConfig = {
+  discordWebhook: process.env.DISCORD_WEBHOOK_URL || null,
+  slackWebhook: process.env.SLACK_WEBHOOK_URL || null
+};
+
+// /alerts command - Configure webhooks
+bot.onText(/\/alerts\s*(discord|slack)?\s*(.*)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const platform = match[1]?.toLowerCase();
+  const webhookUrl = match[2]?.trim();
+
+  if (!platform) {
+    bot.sendMessage(chatId, `
+🔘 *Configure Discord/Slack Alerts*
+
+Usage:
+/alerts discord WEBHOOK_URL
+/alerts slack WEBHOOK_URL
+
+🔗 Get webhook from Discord/Slack settings
+📔 Status:
+- Discord: ${alertConfig.discordWebhook ? '✅' : '❌'}
+- Slack: ${alertConfig.slackWebhook ? '✅' : '❌'}
+    `, { parse_mode: 'Markdown' });
+    return;
+  }
+
+  if (!webhookUrl) {
+    bot.sendMessage(chatId, '❌ Please provide webhook URL');
+    return;
+  }
+
+  if (platform === 'discord') {
+    alertConfig.discordWebhook = webhookUrl;
+    bot.sendMessage(chatId, '✅ Discord webhook configured!');
+  } else if (platform === 'slack') {
+    alertConfig.slackWebhook = webhookUrl;
+    bot.sendMessage(chatId, '✅ Slack webhook configured!');
+  }
+});
+
 // /compare command - Line shopping
 bot.onText(/\/compare\s+(.+?)\s+([+-]?\d+\.?\d*)/, async (msg, match) => {
   const chatId = msg.chat.id;
@@ -341,6 +383,62 @@ $500 bet: +$${(savingsPercentPerBet * 500 / 100).toFixed(0)}
   }
 });
 
+// /calculator command - Custom edge calculator
+bot.onText(/\/calculator/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+💰 *Custom Edge Calculator*
+
+Define your own betting formula:
+
+*Example formulas:*
+- Simple: Win % - Vig
+- Weighted: (Win % * 0.7) + (CLV * 0.3)
+- Advanced: (WinRate - 0.5) * Odds * Kelly
+
+📑 *How to set up:*
+1. Visit https://alexbetlite.netlify.app
+2. Go to Settings tab
+3. Enter your formula
+4. Bot will calculate dual-model comparison
+
+🔍 *Your Model vs Bot Model:*
+Bot shows:
+- Your predicted edge
+- Bot's calculated edge
+- Blend recommendation (weighted average)
+- Which model to use
+  `, { parse_mode: 'Markdown' });
+});
+
+// /api command - REST API documentation
+bot.onText(/\/api/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+🔗 *AlexBET Sharp REST API*
+
+Integrate with Excel, Airtable, or custom tools:
+
+*Endpoints:*
+\`GET /api/bets\` — Your bets
+\`GET /api/stats\` — Performance stats
+\`GET /api/picks\` — Today's gems
+\`POST /api/bets\` — Create bet
+\`GET /api/health\` — Health check
+
+*Authentication:*
+Header: \`X-API-Key: YOUR_KEY\`
+
+*Example (cURL):*
+\`curl -H 'X-API-Key: demo-key' http://api.alexbet.io/api/stats\`
+
+💼 *Premium feature ($99/mo)*
+White-label API + unlimited requests
+
+📧 Contact support for API key
+  `, { parse_mode: 'Markdown' });
+});
+
 // /timezone command (USA only)
 bot.onText(/\/timezone/, (msg) => {
   const chatId = msg.chat.id;
@@ -381,6 +479,9 @@ bot.onText(/\/help/, (msg) => {
 /stats - Your performance
 /timezone - Set US timezone (EST, CST, MST, PST, etc)
 /compare - Line shopping (find best odds)
+/calculator - Custom edge calculator
+/alerts - Configure Discord/Slack
+/api - REST API documentation
 /subscribe - Upgrade to paid
 /lite - Track bets
 /help - This menu
