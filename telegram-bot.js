@@ -6,6 +6,16 @@ const bot = new TelegramBot(token, { polling: true });
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
 
+// Sport league names and emojis
+const sportInfo = {
+  'basketball_nba': { league: 'NBA', emoji: '🏀', name: 'Basketball' },
+  'americanfootball_nfl': { league: 'NFL', emoji: '🏈', name: 'American Football' },
+  'baseball_mlb': { league: 'MLB', emoji: '⚾', name: 'Baseball' },
+  'icehockey_nhl': { league: 'NHL', emoji: '🏒', name: 'Hockey' },
+  'tennis_atp': { league: 'ATP', emoji: '🎾', name: 'Tennis' },
+  'soccer_epl': { league: 'EPL', emoji: '⚽', name: 'Soccer' }
+};
+
 // Store user bankrolls in memory (in production, use Supabase)
 const userBankrolls = {};
 
@@ -62,6 +72,7 @@ async function fetchRealGems(bankroll = 5000) {
 
                   // Map market type to display name
                   const marketName = market === 'h2h' ? 'ML' : market === 'spreads' ? 'Spread' : 'Total';
+                  const sInfo = sportInfo[sport] || { league: 'UNKNOWN', emoji: '🏅' };
 
                   allGems.push({
                     id: game.id + '_' + market,
@@ -73,6 +84,8 @@ async function fetchRealGems(bankroll = 5000) {
                     gameTime: timeStr,
                     market: marketName,
                     sport: sport.split('_')[1].toUpperCase(),
+                    league: sInfo.league,
+                    sportEmoji: sInfo.emoji,
                     book: bestBook.title,
                     kelly: kelly,
                     conservative: {
@@ -179,7 +192,7 @@ bot.onText(/\/scan/, async (msg) => {
 *Gem ${i + 1}* ⚡ +${gem.edge}%
 
 *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
-${gem.game} (${gem.market})
+${gem.game}
 
 📅 ${gem.gameDate} at ${gem.gameTime}
 
@@ -197,7 +210,12 @@ ${gem.game} (${gem.market})
       bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
     });
 
-    bot.sendMessage(chatId, `✅ ${gems.length} gems found across h2h, spreads, totals\n\n📝 Log entry odds in ALexBET Lite: https://alexbetlite.netlify.app`);
+    bot.sendMessage(chatId, `✅ ${gems.length} gems found
+
+📊 Breakdown:
+💰 ${h2hCount} Moneylines
+📈 ${spreadCount} Spreads
+⬆️ ${totalCount} Totals\n\n📝 Log entry odds in ALexBET Lite: https://alexbetlite.netlify.app`);
   } catch (err) {
     console.error('[/scan error]', err.message);
     bot.sendMessage(chatId, `❌ Error: ${err.message}\n\n(Odds API may be down or rate-limited. Try again in a few minutes.`);
