@@ -271,27 +271,36 @@ Track every bet with CLV analysis:
   `, { parse_mode: 'Markdown' });
 });
 
-// /timezone command
+// /timezone command (USA only)
 bot.onText(/\/timezone/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  bot.sendMessage(chatId, `Select your timezone for game times:`, {
+  bot.sendMessage(chatId, `🇺🇸 Select your US timezone for game times:`, {
     reply_markup: {
       inline_keyboard: [
-        [{ text: 'EST', callback_data: 'tz_est' }, { text: 'PST', callback_data: 'tz_pst' }],
-        [{ text: 'CST', callback_data: 'tz_cst' }, { text: 'GMT', callback_data: 'tz_gmt' }],
-        [{ text: 'IST', callback_data: 'tz_ist' }, { text: 'JST', callback_data: 'tz_jst' }],
-        [{ text: 'AEST', callback_data: 'tz_aest' }]
+        [{ text: 'EST (New York)', callback_data: 'tz_est' }, { text: 'CST (Chicago)', callback_data: 'tz_cst' }],
+        [{ text: 'MST (Denver)', callback_data: 'tz_mst' }, { text: 'PST (Los Angeles)', callback_data: 'tz_pst' }],
+        [{ text: 'AKST (Alaska)', callback_data: 'tz_akst' }, { text: 'HST (Hawaii)', callback_data: 'tz_hst' }]
       ]
     }
   });
 });
 
-// Handle timezone
+// Handle USA timezone
 bot.on('callback_query', (q) => {
   const userId = q.from.id;
-  const tzMap = { 'tz_est': 'America/New_York', 'tz_pst': 'America/Los_Angeles', 'tz_cst': 'America/Chicago', 'tz_gmt': 'Europe/London', 'tz_ist': 'Asia/Kolkata', 'tz_jst': 'Asia/Tokyo', 'tz_aest': 'Australia/Sydney' };
-  if (tzMap[q.data]) { userTimezones[userId] = tzMap[q.data]; bot.answerCallbackQuery(q.id, 'Timezone set'); }
+  const tzMap = { 
+    'tz_est': 'America/New_York', 
+    'tz_cst': 'America/Chicago', 
+    'tz_mst': 'America/Denver', 
+    'tz_pst': 'America/Los_Angeles', 
+    'tz_akst': 'America/Anchorage', 
+    'tz_hst': 'Pacific/Honolulu' 
+  };
+  if (tzMap[q.data]) { 
+    userTimezones[userId] = tzMap[q.data]; 
+    bot.answerCallbackQuery(q.id, '✅ Timezone updated'); 
+  }
 });
 
 // /help command
@@ -300,7 +309,7 @@ bot.onText(/\/help/, (msg) => {
   bot.sendMessage(chatId, `
 /scan - Find gems
 /stats - Your performance
-/timezone - Set timezone
+/timezone - Set US timezone (EST, CST, MST, PST, etc)
 /subscribe - Upgrade to paid
 /lite - Track bets
 /help - This menu
