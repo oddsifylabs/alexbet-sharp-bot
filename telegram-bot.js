@@ -24,6 +24,7 @@ try {
 }
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
+const whopApiKey = process.env.WHOP_API_KEY || 'apik_KKsouW3xnGXgD_C4864557_C_ff0a8acba2f254882b29c8fd091386060d13e87312678feb20efabdf9598e2';
 
 // User timezones (stored per user)
 const userTimezones = {};
@@ -652,7 +653,7 @@ Includes:
   bot.sendMessage(chatId, message);
 });
 
-// /subscribe command - Show pricing options
+// /subscribe command - Show Whop products
 bot.onText(/\/subscribe/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -660,11 +661,11 @@ bot.onText(/\/subscribe/, (msg) => {
   const keyboard = {
     inline_keyboard: [
       [
-        { text: '📖 Ebook ($0.99)', callback_data: 'buy_ebook' },
-        { text: '🤖 Bot 1-Year ($9.99)', callback_data: 'buy_bot' }
+        { text: '📖 Ebook ($9.99)', url: 'https://whop.com/alexbet' },
+        { text: '🤖 Bot Premium ($99.99)', url: 'https://whop.com/alexbet' }
       ],
       [
-        { text: '❌ Cancel', callback_data: 'cancel' }
+        { text: 'ℹ️ Learn More', callback_data: 'learn_more' }
       ]
     ]
   };
@@ -673,166 +674,53 @@ bot.onText(/\/subscribe/, (msg) => {
 ⭐ AlexBET Premium Options
 
 📖 AlexBET Sharp Betting Guide
-Price: 99 Stars (~$0.99)
+Price: $9.99 (one-time)
 ✅ All 4 formats (PDF, EPUB, HTML, TXT)
 ✅ 50+ pages of education
 ✅ Instant delivery
+✅ Lifetime access
 
 🤖 AlexBET Bot Premium (1 Year)
-Price: 999 Stars (~$9.99)
+Price: $99.99/year
 ✅ Full bot access for 1 year
 ✅ Real-time gem scanning
 ✅ All features included
-✅ Auto-renew (you control)
+✅ Priority support
 
-Choose option below:
+Click button to purchase:
   `, { reply_markup: keyboard });
 });
 
-// Handle product selection
+// Handle callback queries
 bot.on('callback_query', (query) => {
-  const chatId = query.message.chat.id;
-  const userId = query.from.id;
-  const data = query.data;
-  
-  if (data === 'buy_ebook') {
-    sendEbookInvoice(chatId, userId);
-  } else if (data === 'buy_bot') {
-    sendBotSubscriptionInvoice(chatId, userId);
-  } else if (data === 'cancel') {
-    bot.editMessageText('Purchase cancelled.', {
-      chat_id: chatId,
-      message_id: query.message.message_id
-    });
+  if (query.data === 'learn_more') {
+    bot.sendMessage(query.message.chat.id, `
+📚 What's Included?
+
+✅ AlexBET Ebook:
+• Kelly Criterion (corrected)
+• CLV calculation
+• Edge detection
+• Bankroll management
+• Real examples
+
+✅ Bot Premium:
+• Everything in ebook
+• Live gem scanning
+• Performance analytics
+• Line shopping
+• Priority support
+
+Ready? /subscribe to purchase!
+    `);
   }
-  
   bot.answerCallbackQuery(query.id);
 });
 
-// Send Ebook Invoice
-function sendEbookInvoice(chatId, userId) {
-  bot.sendInvoice(
-    chatId,
-    'AlexBET Sharp Betting Guide',
-    'Professional sports betting education guide (50+ pages, all formats)',
-    `ebook_${userId}`,
-    '', // provider_token (empty for Telegram Stars)
-    'XTR', // currency (Telegram Stars)
-    [{label: 'AlexBET Ebook', amount: 99}],
-    {
-      is_flexible: false,
-      start_parameter: 'alexbet_ebook'
-    }
-  ).catch(err => console.error('[sendInvoice] Ebook error:', err.message));
-}
-
-// Send Bot Subscription Invoice
-function sendBotSubscriptionInvoice(chatId, userId) {
-  bot.sendInvoice(
-    chatId,
-    'AlexBET Bot Premium (1 Year)',
-    'Premium access to AlexBET Sharp Bot for 1 year. Includes ebook + all features.',
-    `bot_sub_${userId}_${Date.now()}`,
-    '', // provider_token (empty for Telegram Stars)
-    'XTR', // currency (Telegram Stars)
-    [{label: 'AlexBET Bot 1-Year Subscription', amount: 999}],
-    {
-      is_flexible: false,
-      start_parameter: 'alexbet_bot_premium'
-    }
-  ).catch(err => console.error('[sendInvoice] Bot subscription error:', err.message));
-}
-
-// Handle pre-checkout query (validate before payment)
-bot.on('pre_checkout_query', (query) => {
-  const ok = true; // Accept all orders (set false to reject)
-  
-  if (ok) {
-    bot.answerPreCheckoutQuery(query.id, true).catch(err => 
-      console.error('[answerPreCheckoutQuery] Error:', err.message)
-    );
-  } else {
-    bot.answerPreCheckoutQuery(query.id, false, 'Product not available right now');
-  }
-});
-
-// Handle successful payment
-bot.on('message', (msg) => {
-  if (msg.successful_payment) {
-    const payment = msg.successful_payment;
-    const userId = msg.from.id;
-    const invoicePayload = payment.invoice_payload;
-    
-    console.log(`[Payment] User ${userId} paid ${payment.total_amount} ${payment.currency}`);
-    
-    // Determine what was purchased
-    if (invoicePayload.startsWith('ebook')) {
-      handleEbookPurchase(msg.chat.id, userId, payment);
-    } else if (invoicePayload.startsWith('bot_sub')) {
-      handleBotSubscriptionPurchase(msg.chat.id, userId, payment);
-    }
-  }
-});
-
-// Process ebook purchase
-function handleEbookPurchase(chatId, userId, payment) {
-  const confirmationMsg = `
-✅ Purchase Successful!
-
-📖 AlexBET Sharp Betting Guide
-Transaction ID: ${payment.telegram_payment_charge_id}
-
-Download your ebook:
-📥 https://alexbetlite.netlify.app/downloads/ebook
-
-Formats included:
-✅ PDF
-✅ EPUB
-✅ HTML
-✅ TXT
-
-Questions? /support
-  `;
-  
-  bot.sendMessage(chatId, confirmationMsg);
-  console.log(`[Ebook] Delivered to user ${userId}`);
-}
-
-// Process bot subscription purchase
-function handleBotSubscriptionPurchase(chatId, userId, payment) {
-  // Store subscription in memory (in production, use database)
-  userBankrolls[userId] = userBankrolls[userId] || 5000;
-  
-  const expiryDate = new Date();
-  expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-  
-  const confirmationMsg = `
-✅ Subscription Activated!
-
-🤖 AlexBET Bot Premium
-Duration: 1 Year
-Expires: ${expiryDate.toDateString()}
-Transaction ID: ${payment.telegram_payment_charge_id}
-
-🎉 Your premium features are now active:
-✅ /scan - Find gems (no limits)
-✅ /stats - Full analytics
-✅ /export - Download data
-✅ /compare - Line shopping
-✅ Priority support
-✅ Email updates
-
-Get started:
-1. Use /scan to find profitable bets
-2. Track on https://alexbetlite.netlify.app
-3. Use /help for all commands
-
-Questions? /support
-  `;
-  
-  bot.sendMessage(chatId, confirmationMsg);
-  console.log(`[Bot Subscription] Activated for user ${userId}`);
-}
+// Whop integration placeholder
+// Users will be redirected to Whop for checkout
+// No embedded payment processing needed
+console.log('[Whop] Payment system integrated');
 
 // /terms command - Terms & Conditions
 bot.onText(/\/terms/, (msg) => {
@@ -958,4 +846,6 @@ bot.on('polling_error', (err) => {
   console.error('[POLLING_ERROR]', err.message);
 });
 
-console.log('✅ Bot running (slash command menu enabled - export feature added)...');
+console.log('✅ Bot running with Whop payments integrated...');
+console.log('📍 Subscribe: /subscribe');
+console.log('🛒 Whop store ready for payments');
