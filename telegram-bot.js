@@ -571,8 +571,7 @@ bot.on('callback_query', (q) => {
 // Export feature - CSV, JSON, PDF
 bot.onText(/\/export/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `
-📊 *Export Your Data*
+  const message = `📊 Export Your Data
 
 Choose format:
 
@@ -584,15 +583,14 @@ Exports include:
 ✅ All bets (dates, odds, results)
 ✅ Performance stats
 ✅ By-sport breakdown
-✅ CLV analysis
-  `, { parse_mode: 'Markdown' });
+✅ CLV analysis`;
+  bot.sendMessage(chatId, message);
 });
 
 // CSV export
 bot.onText(/\/export_csv/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `
-📥 *CSV Export Ready*
+  const message = `📥 CSV Export Ready
 
 Format: Date, Pick, Sport, Type, Odds, Edge%, Stake, Status, P&L, CLV%
 
@@ -602,15 +600,14 @@ Features:
 ✅ Real-time data
 ✅ Download via web app
 
-💾 Export from: https://alexbetlite.netlify.app
-  `, { parse_mode: 'Markdown' });
+💾 Export from: https://alexbetlite.netlify.app`;
+  bot.sendMessage(chatId, message);
 });
 
 // JSON export
 bot.onText(/\/export_json/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `
-📥 *JSON Export Ready*
+  const message = `📥 JSON Export Ready
 
 Format: Structured JSON with all metadata
 
@@ -623,15 +620,14 @@ Includes:
 
 🔄 Perfect for: Backup, integration, analysis
 
-💾 Export from: https://alexbetlite.netlify.app
-  `, { parse_mode: 'Markdown' });
+💾 Export from: https://alexbetlite.netlify.app`;
+  bot.sendMessage(chatId, message);
 });
 
 // PDF export
 bot.onText(/\/export_pdf/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `
-📥 *PDF Report Ready*
+  const message = `📥 PDF Report Ready
 
 Format: Professional PDF report
 
@@ -645,8 +641,8 @@ Includes:
 
 📄 Professional format for: Sharing, printing, archiving
 
-💾 Export from: https://alexbetlite.netlify.app
-  `, { parse_mode: 'Markdown' });
+💾 Export from: https://alexbetlite.netlify.app`;
+  bot.sendMessage(chatId, message);
 });
 
 bot.onText(/\/help/, (msg) => {
