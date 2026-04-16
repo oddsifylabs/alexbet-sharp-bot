@@ -25,6 +25,7 @@ try {
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
 const whopApiKey = process.env.WHOP_API_KEY || 'apik_KKsouW3xnGXgD_C4864557_C_ff0a8acba2f254882b29c8fd091386060d13e87312678feb20efabdf9598e2';
+const whopStoreUrl = 'https://whop.com/oddsify-shop';
 
 // User timezones (stored per user)
 const userTimezones = {};
@@ -661,8 +662,8 @@ bot.onText(/\/subscribe/, (msg) => {
   const keyboard = {
     inline_keyboard: [
       [
-        { text: '📖 Ebook ($9.99)', url: 'https://whop.com/alexbet' },
-        { text: '🤖 Bot Premium ($99.99)', url: 'https://whop.com/alexbet' }
+        { text: '📖 Ebook ($9.99)', url: 'https://whop.com/oddsify-shop' },
+        { text: '🤖 Bot Premium ($99.99)', url: 'https://whop.com/oddsify-shop' }
       ],
       [
         { text: 'ℹ️ Learn More', callback_data: 'learn_more' }
