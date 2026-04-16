@@ -652,6 +652,288 @@ Includes:
   bot.sendMessage(chatId, message);
 });
 
+// /subscribe command - Show pricing options
+bot.onText(/\/subscribe/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '📖 Ebook ($0.99)', callback_data: 'buy_ebook' },
+        { text: '🤖 Bot 1-Year ($9.99)', callback_data: 'buy_bot' }
+      ],
+      [
+        { text: '❌ Cancel', callback_data: 'cancel' }
+      ]
+    ]
+  };
+  
+  bot.sendMessage(chatId, `
+⭐ AlexBET Premium Options
+
+📖 AlexBET Sharp Betting Guide
+Price: 99 Stars (~$0.99)
+✅ All 4 formats (PDF, EPUB, HTML, TXT)
+✅ 50+ pages of education
+✅ Instant delivery
+
+🤖 AlexBET Bot Premium (1 Year)
+Price: 999 Stars (~$9.99)
+✅ Full bot access for 1 year
+✅ Real-time gem scanning
+✅ All features included
+✅ Auto-renew (you control)
+
+Choose option below:
+  `, { reply_markup: keyboard });
+});
+
+// Handle product selection
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+  const data = query.data;
+  
+  if (data === 'buy_ebook') {
+    sendEbookInvoice(chatId, userId);
+  } else if (data === 'buy_bot') {
+    sendBotSubscriptionInvoice(chatId, userId);
+  } else if (data === 'cancel') {
+    bot.editMessageText('Purchase cancelled.', {
+      chat_id: chatId,
+      message_id: query.message.message_id
+    });
+  }
+  
+  bot.answerCallbackQuery(query.id);
+});
+
+// Send Ebook Invoice
+function sendEbookInvoice(chatId, userId) {
+  bot.sendInvoice(
+    chatId,
+    'AlexBET Sharp Betting Guide',
+    'Professional sports betting education guide (50+ pages, all formats)',
+    `ebook_${userId}`,
+    '', // provider_token (empty for Telegram Stars)
+    'XTR', // currency (Telegram Stars)
+    [{label: 'AlexBET Ebook', amount: 99}],
+    {
+      is_flexible: false,
+      start_parameter: 'alexbet_ebook'
+    }
+  ).catch(err => console.error('[sendInvoice] Ebook error:', err.message));
+}
+
+// Send Bot Subscription Invoice
+function sendBotSubscriptionInvoice(chatId, userId) {
+  bot.sendInvoice(
+    chatId,
+    'AlexBET Bot Premium (1 Year)',
+    'Premium access to AlexBET Sharp Bot for 1 year. Includes ebook + all features.',
+    `bot_sub_${userId}_${Date.now()}`,
+    '', // provider_token (empty for Telegram Stars)
+    'XTR', // currency (Telegram Stars)
+    [{label: 'AlexBET Bot 1-Year Subscription', amount: 999}],
+    {
+      is_flexible: false,
+      start_parameter: 'alexbet_bot_premium'
+    }
+  ).catch(err => console.error('[sendInvoice] Bot subscription error:', err.message));
+}
+
+// Handle pre-checkout query (validate before payment)
+bot.on('pre_checkout_query', (query) => {
+  const ok = true; // Accept all orders (set false to reject)
+  
+  if (ok) {
+    bot.answerPreCheckoutQuery(query.id, true).catch(err => 
+      console.error('[answerPreCheckoutQuery] Error:', err.message)
+    );
+  } else {
+    bot.answerPreCheckoutQuery(query.id, false, 'Product not available right now');
+  }
+});
+
+// Handle successful payment
+bot.on('message', (msg) => {
+  if (msg.successful_payment) {
+    const payment = msg.successful_payment;
+    const userId = msg.from.id;
+    const invoicePayload = payment.invoice_payload;
+    
+    console.log(`[Payment] User ${userId} paid ${payment.total_amount} ${payment.currency}`);
+    
+    // Determine what was purchased
+    if (invoicePayload.startsWith('ebook')) {
+      handleEbookPurchase(msg.chat.id, userId, payment);
+    } else if (invoicePayload.startsWith('bot_sub')) {
+      handleBotSubscriptionPurchase(msg.chat.id, userId, payment);
+    }
+  }
+});
+
+// Process ebook purchase
+function handleEbookPurchase(chatId, userId, payment) {
+  const confirmationMsg = `
+✅ Purchase Successful!
+
+📖 AlexBET Sharp Betting Guide
+Transaction ID: ${payment.telegram_payment_charge_id}
+
+Download your ebook:
+📥 https://alexbetlite.netlify.app/downloads/ebook
+
+Formats included:
+✅ PDF
+✅ EPUB
+✅ HTML
+✅ TXT
+
+Questions? /support
+  `;
+  
+  bot.sendMessage(chatId, confirmationMsg);
+  console.log(`[Ebook] Delivered to user ${userId}`);
+}
+
+// Process bot subscription purchase
+function handleBotSubscriptionPurchase(chatId, userId, payment) {
+  // Store subscription in memory (in production, use database)
+  userBankrolls[userId] = userBankrolls[userId] || 5000;
+  
+  const expiryDate = new Date();
+  expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+  
+  const confirmationMsg = `
+✅ Subscription Activated!
+
+🤖 AlexBET Bot Premium
+Duration: 1 Year
+Expires: ${expiryDate.toDateString()}
+Transaction ID: ${payment.telegram_payment_charge_id}
+
+🎉 Your premium features are now active:
+✅ /scan - Find gems (no limits)
+✅ /stats - Full analytics
+✅ /export - Download data
+✅ /compare - Line shopping
+✅ Priority support
+✅ Email updates
+
+Get started:
+1. Use /scan to find profitable bets
+2. Track on https://alexbetlite.netlify.app
+3. Use /help for all commands
+
+Questions? /support
+  `;
+  
+  bot.sendMessage(chatId, confirmationMsg);
+  console.log(`[Bot Subscription] Activated for user ${userId}`);
+}
+
+// /terms command - Terms & Conditions
+bot.onText(/\/terms/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+📋 Terms & Conditions
+
+AlexBET Sharp Bot by Oddsify Labs
+
+1. SUBSCRIPTION
+• 1-year subscription automatically set to expire
+• You can cancel anytime
+• No refunds after 7 days
+
+2. DIGITAL GOODS
+• Ebook license for personal use only
+• No distribution or resale
+• All content copyright Oddsify Labs
+
+3. PAYMENT
+• Powered by Telegram Stars
+• Payments are final (see refund policy)
+• All amounts in USD equivalent
+
+4. DISCLAIMERS
+• Past performance ≠ future results
+• Sports betting carries risk
+• We provide analysis, not guarantees
+• You are responsible for your bets
+
+5. REFUNDS
+• Full refund within 7 days if unopened
+• No refund after 7 days
+• Disputes handled via /paysupport
+
+6. LIABILITY
+• We are not liable for losses
+• Use at your own risk
+• Comply with all local laws
+
+By using this bot, you agree to these terms.
+
+Questions? /support
+  `);
+});
+
+// /support command - Customer Support
+bot.onText(/\/support/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+💬 Support & Help
+
+For issues, email: support@oddsifylabs.com
+
+Common Issues:
+
+❓ Didn't receive my ebook?
+Check /downloads or email support
+
+❓ Bot features not working?
+Try /help or restart the bot
+
+❓ Subscription issue?
+Email support with transaction ID
+
+❓ Payment problems?
+Use /paysupport for payment issues
+
+❓ General questions?
+Email: support@oddsifylabs.com
+
+We respond within 24 hours.
+  `);
+});
+
+// /paysupport command - Payment Disputes
+bot.onText(/\/paysupport/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+💳 Payment Support
+
+For payment disputes or refund requests:
+
+📧 Email: support@oddsifylabs.com
+
+Include:
+✅ Transaction ID (from receipt)
+✅ Date of purchase
+✅ Issue description
+✅ Preferred resolution
+
+Refund Policy:
+• Full refund within 7 days (unopened products)
+• 50% refund days 7-30
+• No refunds after 30 days
+• Disputes resolved within 48 hours
+
+We're here to help!
+  `);
+});
+
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
@@ -659,12 +941,16 @@ bot.onText(/\/help/, (msg) => {
 /stats - Your performance
 /export - Export data (CSV/JSON/PDF)
 /timezone - Set US timezone (EST, CST, MST, PST, etc)
-/subscribe - Upgrade to paid
+/subscribe - Upgrade to paid (Stars)
 /lite - Track bets
+/terms - Terms & Conditions
+/support - Customer support
+/paysupport - Payment issues
 /help - This menu
 
-📝 Track bets: https://alexbetlite.netlify.app
-  `, { parse_mode: 'Markdown' });
+📱 Track bets: https://alexbetlite.netlify.app
+⭐ Subscribe: /subscribe
+  `);
 });
 
 // Error handling
