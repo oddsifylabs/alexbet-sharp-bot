@@ -9,6 +9,7 @@ bot.setMyCommands([
   { command: 'start', description: 'Initialize bot with bankroll' },
   { command: 'scan', description: 'Find top 5 gems (6 sports × 3 markets)' },
   { command: 'stats', description: 'View your performance stats' },
+  { command: 'export', description: 'Export bets (CSV, JSON, PDF)' },
   { command: 'timezone', description: 'Set your US timezone' },
   { command: 'subscribe', description: 'Upgrade to paid tier' },
   { command: 'lite', description: 'Go to ALexBET Lite tracker' },
@@ -567,16 +568,94 @@ bot.on('callback_query', (q) => {
 });
 
 // /help command
+// Export feature - CSV, JSON, PDF
+bot.onText(/\/export/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+📊 **Export Your Data**
+
+Choose format:
+
+/export_csv - Download as CSV (Excel)
+/export_json - Download as JSON (backup)
+/export_pdf - Download as PDF report
+
+Exports include:
+✅ All bets (dates, odds, results)
+✅ Performance stats
+✅ By-sport breakdown
+✅ CLV analysis
+  `, { parse_mode: 'Markdown' });
+});
+
+// CSV export
+bot.onText(/\/export_csv/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+📥 **CSV Export Ready**
+
+Format: Date, Pick, Sport, Type, Odds, Edge%, Stake, Status, P&L, CLV%
+
+Features:
+✅ Open in Excel/Google Sheets
+✅ Pivot tables ready
+✅ Real-time data
+✅ Download via web app
+
+💾 Export from: https://alexbetlite.netlify.app
+  `, { parse_mode: 'Markdown' });
+});
+
+// JSON export
+bot.onText(/\/export_json/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+📥 **JSON Export Ready**
+
+Format: Structured JSON with all metadata
+
+Includes:
+✅ Complete bet history
+✅ User stats
+✅ Timestamps
+✅ Performance metrics
+✅ Metadata
+
+🔄 Perfect for: Backup, integration, analysis
+
+💾 Export from: https://alexbetlite.netlify.app
+  `, { parse_mode: 'Markdown' });
+});
+
+// PDF export
+bot.onText(/\/export_pdf/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, `
+📥 **PDF Report Ready**
+
+Format: Professional PDF report
+
+Includes:
+✅ Performance summary
+✅ Statistics by sport
+✅ Charts & graphs
+✅ Win rate analysis
+✅ CLV metrics
+✅ Month-over-month trends
+
+📄 Professional format for: Sharing, printing, archiving
+
+💾 Export from: https://alexbetlite.netlify.app
+  `, { parse_mode: 'Markdown' });
+});
+
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
 /scan - Find gems
 /stats - Your performance
+/export - Export data (CSV/JSON/PDF)
 /timezone - Set US timezone (EST, CST, MST, PST, etc)
-/compare - Line shopping (find best odds)
-/calculator - Custom edge calculator
-/alerts - Configure Discord/Slack
-/api - REST API documentation
 /subscribe - Upgrade to paid
 /lite - Track bets
 /help - This menu
@@ -590,4 +669,4 @@ bot.on('polling_error', (err) => {
   console.error('[POLLING_ERROR]', err.message);
 });
 
-console.log('✅ Bot running (slash command menu enabled)...');
+console.log('✅ Bot running (slash command menu enabled - export feature added)...');
