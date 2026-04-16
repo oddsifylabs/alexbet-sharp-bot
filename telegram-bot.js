@@ -5,16 +5,23 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // Set bot commands for autocomplete menu when user types /
-bot.setMyCommands([
-  { command: 'start', description: 'Initialize bot with bankroll' },
-  { command: 'scan', description: 'Find top 5 gems (6 sports × 3 markets)' },
-  { command: 'stats', description: 'View your performance stats' },
-  { command: 'export', description: 'Export bets (CSV, JSON, PDF)' },
-  { command: 'timezone', description: 'Set your US timezone' },
-  { command: 'subscribe', description: 'Upgrade to paid tier' },
-  { command: 'lite', description: 'Go to ALexBET Lite tracker' },
-  { command: 'help', description: 'Show all commands' }
-]);
+// Wrapped in try-catch to prevent crash if Telegram API has issues
+try {
+  bot.setMyCommands([
+    { command: 'start', description: 'Initialize bot with bankroll' },
+    { command: 'scan', description: 'Find top 5 gems (6 sports × 3 markets)' },
+    { command: 'stats', description: 'View your performance stats' },
+    { command: 'export', description: 'Export bets (CSV, JSON, PDF)' },
+    { command: 'timezone', description: 'Set your US timezone' },
+    { command: 'subscribe', description: 'Upgrade to paid tier' },
+    { command: 'lite', description: 'Go to ALexBET Lite tracker' },
+    { command: 'help', description: 'Show all commands' }
+  ]).catch(err => {
+    console.warn('[WARN] setMyCommands failed (non-critical):', err.message);
+  });
+} catch (e) {
+  console.warn('[WARN] setMyCommands error (non-critical):', e.message);
+}
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
 
