@@ -572,7 +572,7 @@ bot.on('callback_query', (q) => {
 bot.onText(/\/export/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
-📊 **Export Your Data**
+📊 *Export Your Data*
 
 Choose format:
 
@@ -592,7 +592,7 @@ Exports include:
 bot.onText(/\/export_csv/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
-📥 **CSV Export Ready**
+📥 *CSV Export Ready*
 
 Format: Date, Pick, Sport, Type, Odds, Edge%, Stake, Status, P&L, CLV%
 
@@ -610,7 +610,7 @@ Features:
 bot.onText(/\/export_json/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
-📥 **JSON Export Ready**
+📥 *JSON Export Ready*
 
 Format: Structured JSON with all metadata
 
@@ -631,7 +631,7 @@ Includes:
 bot.onText(/\/export_pdf/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
-📥 **PDF Report Ready**
+📥 *PDF Report Ready*
 
 Format: Professional PDF report
 
