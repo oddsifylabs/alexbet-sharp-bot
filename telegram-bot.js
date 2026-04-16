@@ -35,8 +35,64 @@ const userBankrolls = {};
 
 console.log('🤖 AlexBET Sharp Bot starting (h2h + spreads + totals)...');
 
+function americanToImpliedProb(odds) {
+  if (odds == null || Number.isNaN(Number(odds))) return null;
+  const value = Number(odds);
+  return value > 0 ? 100 / (value + 100) : Math.abs(value) / (Math.abs(value) + 100);
+}
+
+function americanToDecimal(odds) {
+  const value = Number(odds);
+  return value > 0 ? 1 + (value / 100) : 1 + (100 / Math.abs(value));
+}
+
+function formatGameDateTime(dateString, timezone = 'America/New_York') {
+  const date = new Date(dateString);
+  return {
+    gameDate: new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit'
+    }).format(date),
+    gameTime: new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(date)
+  };
+}
+
+function getOutcomeKey(outcome, market) {
+  if (market === 'spreads' || market === 'totals') {
+    return `${outcome.name}|${outcome.point ?? ''}`;
+  }
+  return `${outcome.name}`;
+}
+
+function formatPickLabel(outcome, market) {
+  if (market === 'spreads' && outcome.point != null) {
+    const point = Number(outcome.point);
+    return `${outcome.name} ${point > 0 ? '+' : ''}${point}`;
+  }
+  if (market === 'totals' && outcome.point != null) {
+    return `${outcome.name} ${outcome.point}`;
+  }
+  return outcome.name;
+}
+
+function calculateKellyStake(bankroll, fairProb, americanOdds) {
+  const decimalOdds = americanToDecimal(americanOdds);
+  const b = decimalOdds - 1;
+  const q = 1 - fairProb;
+  const rawKelly = ((b * fairProb) - q) / b;
+  const cappedKelly = Math.max(0, Math.min(rawKelly, 0.05));
+  return Math.floor(bankroll * cappedKelly * 0.5);
+}
+
 // Fetch REAL gems using native https
-async function fetchRealGems(bankroll = 5000) {
+async function fetchRealGems(bankroll = 5000, timezone = 'America/New_York') {
   return new Promise((resolve) => {
     try {
       const sports = ['basketball_nba', 'americanfootball_nfl', 'baseball_mlb', 'icehockey_nhl', 'tennis_atp', 'soccer_epl'];
@@ -47,7 +103,7 @@ async function fetchRealGems(bankroll = 5000) {
 
       sports.forEach(sport => {
         markets.forEach(market => {
-          const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=${market}&oddsFormat=american&limit=3`;
+          const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=${market}&oddsFormat=american`;
 
           https.get(url, (res) => {
             let data = '';
@@ -61,52 +117,84 @@ async function fetchRealGems(bankroll = 5000) {
                   const bookmakers = game.bookmakers || [];
                   if (bookmakers.length === 0) return;
 
-                  const bestBook = bookmakers[0];
-                  const marketData = bestBook.markets || [];
-                  
-                  if (!marketData[0] || !marketData[0].outcomes) return;
-                  
-                  const outcomes = marketData[0].outcomes;
-                  if (outcomes.length < 2) return;
-
-                  const pick = outcomes[0];
-                  const edge = Math.floor(Math.random() * 8) + 3;
-
-                  // Parse game date and time
-                  const gameTime = new Date(game.commence_time);
-                  const dateStr = gameTime.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
-                  const timeStr = gameTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-                  // Kelly sizing based on user's bankroll
-                  const core = bankroll * 0.7;
-                  const kelly = Math.floor((edge / 100) * core * 0.5);
-                  const conservative1pct = Math.floor(bankroll * 0.01);
-                  const conservative1_5pct = Math.floor(bankroll * 0.015);
-                  const conservative2pct = Math.floor(bankroll * 0.02);
-
-                  // Map market type to display name
                   const marketName = market === 'h2h' ? 'ML' : market === 'spreads' ? 'Spread' : 'Total';
                   const sInfo = sportInfo[sport] || { league: 'UNKNOWN', emoji: '🏅' };
+                  const { gameDate, gameTime } = formatGameDateTime(game.commence_time, timezone);
+                  const outcomeMap = new Map();
 
-                  allGems.push({
-                    id: game.id + '_' + market,
-                    pick: pick.name,
-                    odds: pick.price,
-                    edge: edge,
-                    game: `${game.home_team} vs ${game.away_team}`,
-                    gameDate: dateStr,
-                    gameTime: timeStr,
-                    market: marketName,
-                    sport: sport.split('_')[1].toUpperCase(),
-                    league: sInfo.league,
-                    sportEmoji: sInfo.emoji,
-                    book: bestBook.title,
-                    kelly: kelly,
-                    conservative: {
-                      one: conservative1pct,
-                      oneHalf: conservative1_5pct,
-                      two: conservative2pct
-                    }
+                  bookmakers.forEach(bookmaker => {
+                    const bookMarket = (bookmaker.markets || []).find(m => m.key === market);
+                    const outcomes = bookMarket?.outcomes || [];
+                    if (outcomes.length < 2) return;
+
+                    const implieds = outcomes.map(o => americanToImpliedProb(o.price)).filter(v => v != null);
+                    const vigTotal = implieds.reduce((sum, value) => sum + value, 0);
+                    if (!vigTotal) return;
+
+                    outcomes.forEach(outcome => {
+                      const impliedProb = americanToImpliedProb(outcome.price);
+                      if (impliedProb == null) return;
+
+                      const fairProb = impliedProb / vigTotal;
+                      const key = getOutcomeKey(outcome, market);
+                      const existing = outcomeMap.get(key) || {
+                        outcome,
+                        fairProbs: [],
+                        bestPrice: null,
+                        bestBook: null,
+                        books: 0
+                      };
+
+                      existing.fairProbs.push(fairProb);
+                      existing.books += 1;
+
+                      if (existing.bestPrice == null || Number(outcome.price) > existing.bestPrice) {
+                        existing.bestPrice = Number(outcome.price);
+                        existing.bestBook = bookmaker.title;
+                      }
+
+                      outcomeMap.set(key, existing);
+                    });
+                  });
+
+                  outcomeMap.forEach(({ outcome, fairProbs, bestPrice, bestBook, books }) => {
+                    if (!fairProbs.length || bestPrice == null || books < 2) return;
+
+                    const fairProb = fairProbs.reduce((sum, value) => sum + value, 0) / fairProbs.length;
+                    const impliedProb = americanToImpliedProb(bestPrice);
+                    const decimalOdds = americanToDecimal(bestPrice);
+                    const ev = (fairProb * decimalOdds) - 1;
+                    const edge = (fairProb - impliedProb) * 100;
+
+                    if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.01) return;
+
+                    const kelly = calculateKellyStake(bankroll, fairProb, bestPrice);
+                    const conservative1pct = Math.floor(bankroll * 0.01);
+                    const conservative1_5pct = Math.floor(bankroll * 0.015);
+                    const conservative2pct = Math.floor(bankroll * 0.02);
+
+                    allGems.push({
+                      id: `${game.id}_${market}_${getOutcomeKey(outcome, market)}`,
+                      pick: formatPickLabel(outcome, market),
+                      odds: bestPrice,
+                      edge: Number(edge.toFixed(2)),
+                      ev: Number((ev * 100).toFixed(2)),
+                      game: `${game.away_team} vs ${game.home_team}`,
+                      gameDate,
+                      gameTime,
+                      market: marketName,
+                      sport: sport.split('_')[1].toUpperCase(),
+                      league: sInfo.league,
+                      sportEmoji: sInfo.emoji,
+                      book: bestBook,
+                      booksCompared: books,
+                      kelly,
+                      conservative: {
+                        one: conservative1pct,
+                        oneHalf: conservative1_5pct,
+                        two: conservative2pct
+                      }
+                    });
                   });
                 });
               } catch (err) {
@@ -186,11 +274,12 @@ bot.onText(/\/scan/, async (msg) => {
   
   // Get user's bankroll or use default
   const bankroll = userBankrolls[userId] || 5000;
+  const timezone = userTimezones[userId] || 'America/New_York';
   
   bot.sendMessage(chatId, '🔄 Fetching live odds (h2h + spreads + totals)...');
   
   try {
-    const gems = await fetchRealGems(bankroll);
+    const gems = await fetchRealGems(bankroll, timezone);
     
     if (!gems || gems.length === 0) {
       bot.sendMessage(chatId, '⏳ No live games scheduled right now.\n\nTry again in a few hours.');
@@ -208,14 +297,15 @@ bot.onText(/\/scan/, async (msg) => {
     // Send real gems with multiple bet sizing options
     topGems.forEach((gem, i) => {
       const msg = `
-*Gem ${i + 1}* ⚡ +${gem.edge}%
+*Gem ${i + 1}* ⚡ Edge ${gem.edge > 0 ? '+' : ''}${gem.edge}% | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%
 
 *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
 ${gem.game}
 
 📅 ${gem.gameDate} at ${gem.gameTime}
 
-📍 ${gem.book}
+📍 Best line: ${gem.book}
+📚 Books compared: ${gem.booksCompared}
 
 💰 *Bet Sizing Options:*
 🎯 Kelly (50%): $${gem.kelly}
