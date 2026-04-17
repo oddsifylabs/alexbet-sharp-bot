@@ -348,7 +348,7 @@ bot.onText(/\/scan/, async (msg) => {
         const edgeB = b.claudeEdge !== undefined ? b.claudeEdge : b.edge;
         return edgeB - edgeA;
       })
-      .slice(0, 5);
+      .slice(0, 10);
     
     // Send gems with Claude analysis
     topGems.forEach((gem, i) => {
