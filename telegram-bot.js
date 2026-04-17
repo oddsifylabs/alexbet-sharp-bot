@@ -115,7 +115,7 @@ function calculateKellyStake(bankroll, fairProb, americanOdds) {
 }
 
 // Fetch REAL gems using native https
-async function fetchRealGems(bankroll = 5000, timezone = 'America/New_York') {
+async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
   return new Promise((resolve) => {
     try {
       const sports = ['basketball_nba', 'americanfootball_nfl', 'baseball_mlb', 'icehockey_nhl', 'tennis_atp', 'soccer_epl'];
@@ -196,6 +196,7 @@ async function fetchRealGems(bankroll = 5000, timezone = 'America/New_York') {
                     const conservative1_5pct = Math.floor(bankroll * 0.015);
                     const conservative2pct = Math.floor(bankroll * 0.02);
 
+                    const betTypeMap = { 'ML': 'MONEYLINE', 'Spread': 'SPREAD', 'Total': 'TOTAL' };
                     allGems.push({
                       id: `${game.id}_${market}_${getOutcomeKey(outcome, market)}`,
                       pick: formatPickLabel(outcome, market),
@@ -206,6 +207,7 @@ async function fetchRealGems(bankroll = 5000, timezone = 'America/New_York') {
                       gameDate,
                       gameTime,
                       market: marketName,
+                      betType: betTypeMap[marketName] || 'UNKNOWN',
                       sport: sport.split('_')[1].toUpperCase(),
                       league: sInfo.league,
                       sportEmoji: sInfo.emoji,
@@ -265,7 +267,7 @@ Moneyline, Spread, Totals
 🟢 *Sharp:* $49/mo
 🟢 *Elite:* $99/mo
 
-First, what's your bankroll? (or reply 5000 for default)
+First, what's your bankroll? (or reply 100 for default)
   `, { parse_mode: 'Markdown' });
   
   userBankrolls[userId] = 'awaiting_bankroll';
@@ -279,8 +281,8 @@ bot.on('message', (msg) => {
   if (userBankrolls[userId] === 'awaiting_bankroll') {
     const bankroll = parseInt(msg.text);
     
-    if (isNaN(bankroll) || bankroll < 100) {
-      bot.sendMessage(chatId, '❌ Invalid bankroll. Please enter a number (e.g., 5000)');
+    if (isNaN(bankroll) || bankroll < 50) {
+      bot.sendMessage(chatId, '❌ Invalid bankroll. Please enter a number (e.g., 100)');
       return;
     }
     
@@ -296,7 +298,7 @@ bot.onText(/\/scan/, async (msg) => {
   console.log(`[/scan] User ${userId}`);
   
   // Get user's bankroll or use default
-  const bankroll = userBankrolls[userId] || 5000;
+  const bankroll = userBankrolls[userId] || 100;
   const timezone = userTimezones[userId] || 'America/New_York';
   const isPremium = false; // TODO: Check user subscription from Whop
   
@@ -350,29 +352,22 @@ bot.onText(/\/scan/, async (msg) => {
       })
       .slice(0, 10);
     
-    // Send gems with Claude analysis
+    // Send gems with refactored output formatting
     topGems.forEach((gem, i) => {
       const displayEdge = gem.claudeEdge !== undefined ? gem.claudeEdge : gem.edge;
       const confidence = gem.claudeConfidence ? ` (${gem.claudeConfidence}% conf)` : '';
       const model = gem.claudeModel ? ` [${gem.claudeModel}]` : '';
       const msg = `
-*Gem ${i + 1}* ⚡ Claude Edge: ${displayEdge > 0 ? '+' : ''}${displayEdge}%${confidence}${model} | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%
+*Gem ${i + 1}* ${gem.sportEmoji} [${gem.betType}] ⚡ ${displayEdge > 0 ? '+' : ''}${displayEdge}%${confidence}${model}
 
-*${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
+*${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%
 ${gem.game}
+${gem.gameDate} ${gem.gameTime}
 
-📅 ${gem.gameDate} at ${gem.gameTime}
+📍 ${gem.book} | 📚 ${gem.booksCompared} books
 
-📍 Best line: ${gem.book}
-📚 Books compared: ${gem.booksCompared}
-
-💰 *Bet Sizing Options:*
-🎯 Kelly (50%): $${gem.kelly}
-🟢 Conservative (2%): $${gem.conservative.two}
-🟡 Conservative (1.5%): $${gem.conservative.oneHalf}
-🔴 Conservative (1%): $${gem.conservative.one}
-
-💰 Bankroll: $${bankroll}
+💰 *Stake:*
+🎯 Kelly: $${gem.kelly} | 🟢 2%: $${gem.conservative.two}
       `;
       
       bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
