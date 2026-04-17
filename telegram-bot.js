@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const https = require('https');
+const ClaudeOptimizer = require('./claude-optimizer');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -26,6 +27,17 @@ try {
 const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
 const whopApiKey = process.env.WHOP_API_KEY || 'apik_KKsouW3xnGXgD_C4864557_C_ff0a8acba2f254882b29c8fd091386060d13e87312678feb20efabdf9598e2';
 const whopStoreUrl = 'https://whop.com/oddsify-shop';
+
+// Initialize Claude optimizer
+let claudeOptimizer = null;
+if (process.env.ANTHROPIC_API_KEY) {
+  try {
+    claudeOptimizer = new ClaudeOptimizer(process.env.ANTHROPIC_API_KEY);
+    console.log('✅ Claude optimizer initialized');
+  } catch (err) {
+    console.warn('⚠️ Claude optimizer failed:', err.message);
+  }
+}
 
 // User timezones (stored per user)
 const userTimezones = {};
