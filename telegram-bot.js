@@ -288,7 +288,7 @@ bot.on('message', (msg) => {
   }
 });
 
-// /scan command
+// /scan command with Claude AI edge detection
 bot.onText(/\/scan/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -297,8 +297,9 @@ bot.onText(/\/scan/, async (msg) => {
   // Get user's bankroll or use default
   const bankroll = userBankrolls[userId] || 5000;
   const timezone = userTimezones[userId] || 'America/New_York';
+  const isPremium = false; // TODO: Check user subscription from Whop
   
-  bot.sendMessage(chatId, '🔄 Fetching live odds (h2h + spreads + totals)...');
+  bot.sendMessage(chatId, '🔄 Fetching live odds + Claude AI analysis...');
   
   try {
     const gems = await fetchRealGems(bankroll, timezone);
@@ -308,18 +309,53 @@ bot.onText(/\/scan/, async (msg) => {
       return;
     }
 
-    // Build market breakdown before slicing top gems
-    const h2hCount = gems.filter(gem => gem.market === 'ML').length;
-    const spreadCount = gems.filter(gem => gem.market === 'Spread').length;
-    const totalCount = gems.filter(gem => gem.market === 'Total').length;
+    // Use Claude optimizer if available
+    let analyzedGems = gems;
+    let claudeStats = null;
+    if (claudeOptimizer) {
+      console.log('[CLAUDE] Analyzing gems with multi-tier pipeline...');
+      analyzedGems = [];
+      
+      // Analyze top 10 games with Haiku → Sonnet → Opus pipeline
+      for (const gem of gems.slice(0, 10)) {
+        try {
+          const analysis = await claudeOptimizer.analyzeGame(gem, isPremium);
+          gem.claudeEdge = analysis.edge;
+          gem.claudeConfidence = analysis.confidence;
+          gem.claudeModel = analysis.model;
+          analyzedGems.push(gem);
+          console.log(`[CLAUDE] ${gem.pick}: ${analysis.edge}% edge (${analysis.model}, ${analysis.confidence}% conf)`);
+        } catch (err) {
+          console.warn('[CLAUDE ERROR]', err.message);
+          analyzedGems.push(gem);
+        }
+      }
+      claudeStats = claudeOptimizer.getStats();
+    } else {
+      analyzedGems = gems;
+    }
 
-    // Sort gems by edge (highest first) and take top 5
-    const topGems = gems.sort((a, b) => b.edge - a.edge).slice(0, 5);
+    // Build market breakdown
+    const h2hCount = analyzedGems.filter(gem => gem.market === 'ML').length;
+    const spreadCount = analyzedGems.filter(gem => gem.market === 'Spread').length;
+    const totalCount = analyzedGems.filter(gem => gem.market === 'Total').length;
+
+    // Sort by Claude edge or original edge
+    const topGems = analyzedGems
+      .sort((a, b) => {
+        const edgeA = a.claudeEdge !== undefined ? a.claudeEdge : a.edge;
+        const edgeB = b.claudeEdge !== undefined ? b.claudeEdge : b.edge;
+        return edgeB - edgeA;
+      })
+      .slice(0, 5);
     
-    // Send real gems with multiple bet sizing options
+    // Send gems with Claude analysis
     topGems.forEach((gem, i) => {
+      const displayEdge = gem.claudeEdge !== undefined ? gem.claudeEdge : gem.edge;
+      const confidence = gem.claudeConfidence ? ` (${gem.claudeConfidence}% conf)` : '';
+      const model = gem.claudeModel ? ` [${gem.claudeModel}]` : '';
       const msg = `
-*Gem ${i + 1}* ⚡ Edge ${gem.edge > 0 ? '+' : ''}${gem.edge}% | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%
+*Gem ${i + 1}* ⚡ Claude Edge: ${displayEdge > 0 ? '+' : ''}${displayEdge}%${confidence}${model} | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%
 
 *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}
 ${gem.game}
