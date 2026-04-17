@@ -1,3 +1,4 @@
+require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const https = require('https');
 const ClaudeOptimizer = require('./claude-optimizer');
