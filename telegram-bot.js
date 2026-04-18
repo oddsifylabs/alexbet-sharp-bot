@@ -426,16 +426,15 @@ bot.onText(/\/scan/, async (msg) => {
   }
 });
 
-// /stats command
-bot.onText(/\/stats/, (msg) => {
+// /stats and /stat commands
+bot.onText(/\/stats?/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
 *📊 Your Stats*
-💰 P&L: +$215
-📈 Win Rate: 62%
-🎯 Bets: 16
+🔄 This feature is coming soon!
 
-💡 For detailed analytics, use ALexBET Lite: https://alexbetlite.netlify.app
+Track your P&L, win rate, and bet history:
+📊 https://alexbetlite.netlify.app
   `, { parse_mode: 'Markdown' });
 });
 
