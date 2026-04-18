@@ -286,7 +286,9 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  console.log(`[/start] User ${userId}`);
+  const userName = msg.from.username || 'anonymous';
+  
+  logger.info('User initiated /start command', { userId, userName, chatId });
   
   bot.sendMessage(chatId, `
 ⚡ *AlexBET Sharp Bot* 🎯
@@ -306,6 +308,7 @@ First, what's your bankroll? (or reply 100 for default)
   `, { parse_mode: 'Markdown' });
   
   userBankrolls[userId] = 'awaiting_bankroll';
+  logger.debug('Awaiting user bankroll input', { userId, chatId });
 });
 
 // Handle bankroll input
@@ -314,15 +317,25 @@ bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   
   if (userBankrolls[userId] === 'awaiting_bankroll') {
-    const bankroll = parseInt(msg.text);
+    const validation = validateBankroll(msg.text);
     
-    if (isNaN(bankroll) || bankroll < 50) {
-      bot.sendMessage(chatId, '❌ Invalid bankroll. Please enter a number (e.g., 100)');
+    if (!validation.valid) {
+      logger.warn('Invalid bankroll input received', {
+        userId,
+        input: msg.text,
+        error: validation.error
+      });
+      bot.sendMessage(chatId, validation.error);
       return;
     }
     
-    userBankrolls[userId] = bankroll;
-    bot.sendMessage(chatId, `✅ Bankroll set to $${bankroll}\n\nNow use /scan to find gems!`);
+    userBankrolls[userId] = validation.value;
+    logger.info('Bankroll configured by user', {
+      userId,
+      bankroll: validation.value,
+      chatId
+    });
+    bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value}\n\nNow use /scan to find gems!`);
   }
 });
 
@@ -330,28 +343,38 @@ bot.on('message', (msg) => {
 bot.onText(/\/scan/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  console.log(`[/scan] User ${userId}`);
+  const userName = msg.from.username || 'anonymous';
+  
+  logger.info('User initiated /scan command', { userId, userName, chatId });
   
   // Get user's bankroll or use default
   const bankroll = userBankrolls[userId] || 100;
   const timezone = userTimezones[userId] || 'America/New_York';
   const isPremium = false; // TODO: Check user subscription from Whop
   
+  logger.debug('Scan parameters loaded', { userId, bankroll, timezone, isPremium });
+  
   bot.sendMessage(chatId, '🔄 Fetching live odds + Claude AI analysis...');
+  const scanStartTime = Date.now();
   
   try {
+    logger.debug('Fetching gems from Odds API', { userId, bankroll, timezone });
     const gems = await fetchRealGems(bankroll, timezone);
+    const fetchDuration = ((Date.now() - scanStartTime) / 1000).toFixed(3);
     
     if (!gems || gems.length === 0) {
-      bot.sendMessage(chatId, '⏳ No live games scheduled right now.\n\nTry again in a few hours.');
+      logger.warn('No gems found from API', { userId, fetchDuration });
+      bot.sendMessage(chatId, '⏳ No live games scheduled right now.\\n\\nTry again in a few hours.');
       return;
     }
+
+    logger.info('Gems fetched from API', { userId, gemCount: gems.length, fetchDuration });
 
     // Use Claude optimizer if available
     let analyzedGems = gems;
     let claudeStats = null;
     if (claudeOptimizer) {
-      console.log('[CLAUDE] Analyzing gems with multi-tier pipeline...');
+      logger.debug('Starting Claude AI analysis pipeline', { userId, gemCount: gems.length });
       analyzedGems = [];
       
       // Analyze top 10 games with Haiku → Sonnet → Opus pipeline
@@ -362,14 +385,26 @@ bot.onText(/\/scan/, async (msg) => {
           gem.claudeConfidence = analysis.confidence;
           gem.claudeModel = analysis.model;
           analyzedGems.push(gem);
-          console.log(`[CLAUDE] ${gem.pick}: ${analysis.edge}% edge (${analysis.model}, ${analysis.confidence}% conf)`);
+          logger.debug('Claude analysis complete for game', {
+            userId,
+            pick: gem.pick,
+            edge: analysis.edge,
+            model: analysis.model,
+            confidence: analysis.confidence
+          });
         } catch (err) {
-          console.warn('[CLAUDE ERROR]', err.message);
+          logger.warn('Claude analysis failed for game', {
+            userId,
+            pick: gem.pick,
+            error: err.message
+          });
           analyzedGems.push(gem);
         }
       }
       claudeStats = claudeOptimizer.getStats();
+      logger.info('Claude analysis pipeline complete', { userId, gemsAnalyzed: analyzedGems.length, stats: claudeStats });
     } else {
+      logger.warn('Claude optimizer not available, using raw edge data', { userId });
       analyzedGems = gems;
     }
 
@@ -432,8 +467,12 @@ bot.onText(/\/scan/, async (msg) => {
       bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
     });
   } catch (err) {
-    console.error('[/scan error]', err.message);
-    bot.sendMessage(chatId, `❌ Error: ${err.message}\n\n(Odds API may be down or rate-limited. Try again in a few minutes.`);
+    logger.error('Scan execution failed', {
+      userId,
+      error: err.message,
+      stack: err.stack
+    });
+    bot.sendMessage(chatId, `❌ Error: ${err.message}\\n\\n(Odds API may be down or rate-limited. Try again in a few minutes.`);
   }
 });
 
