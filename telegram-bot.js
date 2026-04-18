@@ -2,6 +2,8 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const https = require('https');
 const ClaudeOptimizer = require('./claude-optimizer');
+const logger = require('./src/utils/logger');
+const { validateBankroll, validateTimezone, parseAPIResponse } = require('./src/utils/validation');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
