@@ -377,33 +377,48 @@ bot.onText(/\/scan/, async (msg) => {
       })
       .slice(0, 10);
     
-    // Send gems with refactored output formatting
-    topGems.forEach((gem, i) => {
-      const displayEdge = gem.claudeEdge !== undefined ? gem.claudeEdge : gem.edge;
-      const confidence = gem.claudeConfidence ? ` (${gem.claudeConfidence}% conf)` : '';
-      const model = gem.claudeModel ? ` [${gem.claudeModel}]` : '';
-      const msg = `
-*Gem ${i + 1}* ${gem.sportEmoji} [${gem.betType}] ⚡ ${displayEdge > 0 ? '+' : ''}${displayEdge}%${confidence}${model}
+    // Group gems by sport
+    const sportGroups = {};
+    topGems.forEach(gem => {
+      const sport = gem.league || gem.sport || 'Other';
+      if (!sportGroups[sport]) sportGroups[sport] = [];
+      sportGroups[sport].push(gem);
+    });
 
-*${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%
-${gem.game}
-${gem.gameDate} ${gem.gameTime}
+    // Sort each sport group by game time (ascending)
+    Object.keys(sportGroups).forEach(sport => {
+      sportGroups[sport].sort((a, b) => {
+        const timeA = new Date(a.gameDate + ' ' + a.gameTime);
+        const timeB = new Date(b.gameDate + ' ' + b.gameTime);
+        return timeA - timeB;
+      });
+    });
 
-📍 ${gem.book} | 📚 ${gem.booksCompared} books
-
-💰 *Stake:*
-🎯 Kelly: $${gem.kelly} | 🟢 2%: $${gem.conservative.two}
-      `;
+    // Send sport-grouped output with sequential numbering
+    let gemCounter = 1;
+    Object.keys(sportGroups).forEach(sport => {
+      const gemsInSport = sportGroups[sport];
+      let msg = `🏆 *${sport.toUpperCase()}*\n`;
+      
+      gemsInSport.forEach((gem, idx) => {
+        const isLast = idx === gemsInSport.length - 1;
+        const prefix = isLast ? '└─' : '├─';
+        const displayEdge = gem.claudeEdge !== undefined ? gem.claudeEdge : gem.edge;
+        const confidence = gem.claudeConfidence ? ` (${gem.claudeConfidence}%)` : '';
+        
+        msg += `\n${prefix} #${gemCounter} [${gem.betType}] ⚡ ${displayEdge > 0 ? '+' : ''}${displayEdge}%${confidence}\n`;
+        msg += `   *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%\n`;
+        msg += `   ${gem.game} | ${gem.gameTime}\n`;
+        msg += `   📍 ${gem.book} | 📚 ${gem.booksCompared}\n`;
+        msg += `   💰 Kelly: $${gem.kelly} | 2%: $${gem.conservative.two}`;
+        
+        gemCounter++;
+      });
       
       bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
     });
 
-    bot.sendMessage(chatId, `✅ ${gems.length} gems found
-
-📊 Breakdown:
-💰 ${h2hCount} Moneylines
-📈 ${spreadCount} Spreads
-⬆️ ${totalCount} Totals\n\n📝 Log entry odds in ALexBET Lite: https://alexbetlite.netlify.app`);
+    bot.sendMessage(chatId, `✅ ${gems.length} gems found | ${topGems.length} displayed\n\n📊 Breakdown:\n💰 ${h2hCount} Moneylines | 📈 ${spreadCount} Spreads | ⬆️ ${totalCount} Totals\n\n📝 https://alexbetlite.netlify.app`);
   } catch (err) {
     console.error('[/scan error]', err.message);
     bot.sendMessage(chatId, `❌ Error: ${err.message}\n\n(Odds API may be down or rate-limited. Try again in a few minutes.`);
