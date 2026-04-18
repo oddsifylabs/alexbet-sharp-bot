@@ -141,11 +141,13 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
         markets.forEach(market => {
           const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=${market}&oddsFormat=american`;
 
-          https.get(url, (res) => {
+          const req = https.get(url, (res) => {
             let data = '';
+            let isTimedOut = false;
             
             res.on('data', chunk => { data += chunk; });
             res.on('end', () => {
+              if (isTimedOut) return; // Skip if already timed out
               try {
                 if (!data || data.length === 0) {
                   console.warn(`[ODDS API] Empty response for ${sport} ${market}`);
@@ -266,7 +268,22 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                 resolve(allGems.length > 0 ? allGems : null);
               }
             });
-          }).on('error', (err) => {
+          });
+
+          // Set timeout: 5 seconds max per request
+          req.setTimeout(5000);
+          req.on('timeout', () => {
+            isTimedOut = true;
+            req.destroy();
+            console.warn(`[TIMEOUT] Request timed out for ${sport} ${market}`);
+            completed++;
+            if (completed === totalRequests) {
+              resolve(allGems.length > 0 ? allGems : null);
+            }
+          });
+
+          req.on('error', (err) => {
+            if (isTimedOut) return; // Don't handle if already timed out
             console.error(`Error fetching ${sport} ${market}:`, err.message);
             completed++;
             if (completed === totalRequests) {
@@ -364,7 +381,7 @@ bot.onText(/\/scan/, async (msg) => {
     
     if (!gems || gems.length === 0) {
       logger.warn('No gems found from API', { userId, fetchDuration });
-      bot.sendMessage(chatId, '⏳ No live games scheduled right now.\\n\\nTry again in a few hours.');
+      bot.sendMessage(chatId, '⏳ No live games scheduled right now.\n\nTry again in a few hours.');
       return;
     }
 
@@ -472,7 +489,18 @@ bot.onText(/\/scan/, async (msg) => {
       error: err.message,
       stack: err.stack
     });
-    bot.sendMessage(chatId, `❌ Error: ${err.message}\\n\\n(Odds API may be down or rate-limited. Try again in a few minutes.`);
+    
+    // Provide helpful context about the error
+    let errorContext = 'An error occurred while scanning odds';
+    if (err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND')) {
+      errorContext = '🔌 Network connection failed';
+    } else if (err.message.includes('429') || err.message.includes('rate')) {
+      errorContext = '⚡ API rate limit exceeded';
+    } else if (err.message.includes('timeout')) {
+      errorContext = '⏱️ Request timed out';
+    }
+    
+    bot.sendMessage(chatId, `❌ ${errorContext}\n\nTry again in a few minutes.`);
   }
 });
 
