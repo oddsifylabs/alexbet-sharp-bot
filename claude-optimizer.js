@@ -110,60 +110,15 @@ class ClaudeOptimizer {
   }
 
   async analyzeWithSonnet(gameData, haikuResult) {
-    // Skip if Haiku confidence is very high
-    if (haikuResult.confidence > 85) {
-      console.log('[SKIP SONNET] Haiku confidence sufficient');
-      return haikuResult;
-    }
-    
-    const prompt = this.buildAnalysisPrompt(gameData, haikuResult);
-    
-    try {
-      const response = await this.client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 500,
-        messages: [{ role: 'user', content: prompt }]
-      });
-      
-      this.stats.totalTokens += response.usage.input_tokens + response.usage.output_tokens;
-      this.stats.totalCalls++;
-      
-      const result = this.parseSonnetResponse(response.content[0].text);
-      console.log(`[SONNET] Edge: ${result.edge}%, Confidence: ${result.confidence}%`);
-      
-      return result;
-    } catch (err) {
-      console.error('[SONNET ERROR]', err.message);
-      return haikuResult;
-    }
+    // DISABLED (2026-04-18): Haiku-only mode to reduce costs
+    console.log('[SONNET DISABLED] Returning Haiku result');
+    return haikuResult;
   }
 
   async deepAnalyzeWithOpus(gameData, sonnetResult, isPremiumUser = false) {
-    // Only use Opus for premium users with low confidence
-    if (!isPremiumUser || sonnetResult.confidence > 75) {
-      return sonnetResult;
-    }
-    
-    const prompt = this.buildDeepAnalysisPrompt(gameData, sonnetResult);
-    
-    try {
-      const response = await this.client.messages.create({
-        model: 'claude-3-opus-4-1-20250805',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      });
-      
-      this.stats.totalTokens += response.usage.input_tokens + response.usage.output_tokens;
-      this.stats.totalCalls++;
-      
-      const result = this.parseOpusResponse(response.content[0].text);
-      console.log(`[OPUS] Edge: ${result.edge}%, Confidence: ${result.confidence}%`);
-      
-      return result;
-    } catch (err) {
-      console.error('[OPUS ERROR]', err.message);
-      return sonnetResult;
-    }
+    // DISABLED (2026-04-18): Haiku-only mode to reduce costs
+    console.log('[OPUS DISABLED] Returning Sonnet result');
+    return sonnetResult;
   }
 
   /**

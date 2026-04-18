@@ -30,13 +30,13 @@ const whopApiKey = process.env.WHOP_API_KEY || 'apik_KKsouW3xnGXgD_C4864557_C_ff
 const whopStoreUrl = 'https://whop.com/oddsify-shop';
 
 // Initialize Claude optimizer
-// DISABLED (2026-04-18 09:02): Token cost runaway — 12M tokens in 24h
-// Re-enable after switching to Haiku-only or implementing rate limiting
+// UPDATED (2026-04-18 09:50): Re-enabled with Haiku-only mode (no Sonnet/Opus)
+// Reduced cost: ~1x vs 10x previous cascade
 let claudeOptimizer = null;
-if (false && process.env.ANTHROPIC_API_KEY) {
+if (process.env.ANTHROPIC_API_KEY) {
   try {
     claudeOptimizer = new ClaudeOptimizer(process.env.ANTHROPIC_API_KEY);
-    console.log('✅ Claude optimizer initialized');
+    console.log('✅ Claude optimizer initialized (Haiku-only mode)');
   } catch (err) {
     console.warn('⚠️ Claude optimizer failed:', err.message);
   }
