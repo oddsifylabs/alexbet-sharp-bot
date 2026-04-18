@@ -25,8 +25,17 @@ try {
   console.warn('[WARN] setMyCommands error (non-critical):', e.message);
 }
 
-const ODDS_API_KEY = process.env.ODDS_API_KEY || 'dc525dcde4712306f140051f1641d509';
-const whopApiKey = process.env.WHOP_API_KEY || 'apik_KKsouW3xnGXgD_C4864557_C_ff0a8acba2f254882b29c8fd091386060d13e87312678feb20efabdf9598e2';
+const ODDS_API_KEY = process.env.ODDS_API_KEY;
+const whopApiKey = process.env.WHOP_API_KEY;
+
+if (!ODDS_API_KEY) {
+  console.error('❌ CRITICAL: ODDS_API_KEY not set in .env');
+  process.exit(1);
+}
+if (!whopApiKey) {
+  console.error('❌ CRITICAL: WHOP_API_KEY not set in .env');
+  process.exit(1);
+}
 const whopStoreUrl = 'https://whop.com/oddsify-shop';
 
 // Initialize Claude optimizer
