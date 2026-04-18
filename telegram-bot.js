@@ -142,7 +142,20 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                   }
                   return;
                 }
-                const games = JSON.parse(data) || [];
+                let games;
+                try {
+                  games = JSON.parse(data) || [];
+                } catch (parseErr) {
+                  console.error(`[ODDS API JSON Parse Error] ${sport} ${market}`, parseErr.message);
+                  console.error(`Response length: ${data.length}, First 200 chars:`, data.substring(0, 200));
+                  console.error(`Last 100 chars:`, data.substring(Math.max(0, data.length - 100)));
+                  completed++;
+                  if (completed === totalRequests) {
+                    resolve(allGems.length > 0 ? allGems : null);
+                  }
+                  return;
+                }
+                games = games || [];
                 
                 games.forEach(game => {
                   const bookmakers = game.bookmakers || [];
