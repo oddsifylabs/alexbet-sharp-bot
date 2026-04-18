@@ -394,7 +394,10 @@ bot.onText(/\/scan/, async (msg) => {
       });
     });
 
-    // Send sport-grouped output with sequential numbering
+    // Send summary FIRST
+    bot.sendMessage(chatId, `✅ ${gems.length} gems found | ${topGems.length} displayed\n\n📊 Breakdown:\n💰 ${h2hCount} Moneylines | 📈 ${spreadCount} Spreads | ⬆️ ${totalCount} Totals\n\n📝 https://alexbetlite.netlify.app`);
+
+    // Then send sport-grouped gem cards
     let gemCounter = 1;
     Object.keys(sportGroups).forEach(sport => {
       const gemsInSport = sportGroups[sport];
@@ -417,8 +420,6 @@ bot.onText(/\/scan/, async (msg) => {
       
       bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
     });
-
-    bot.sendMessage(chatId, `✅ ${gems.length} gems found | ${topGems.length} displayed\n\n📊 Breakdown:\n💰 ${h2hCount} Moneylines | 📈 ${spreadCount} Spreads | ⬆️ ${totalCount} Totals\n\n📝 https://alexbetlite.netlify.app`);
   } catch (err) {
     console.error('[/scan error]', err.message);
     bot.sendMessage(chatId, `❌ Error: ${err.message}\n\n(Odds API may be down or rate-limited. Try again in a few minutes.`);
