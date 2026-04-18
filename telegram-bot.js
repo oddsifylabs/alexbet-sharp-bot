@@ -134,6 +134,14 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
             res.on('data', chunk => { data += chunk; });
             res.on('end', () => {
               try {
+                if (!data || data.length === 0) {
+                  console.warn(`[ODDS API] Empty response for ${sport} ${market}`);
+                  completed++;
+                  if (completed === totalRequests) {
+                    resolve(allGems.length > 0 ? allGems : null);
+                  }
+                  return;
+                }
                 const games = JSON.parse(data) || [];
                 
                 games.forEach(game => {
@@ -223,7 +231,8 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                   });
                 });
               } catch (err) {
-                console.error(`Error parsing ${sport} ${market}:`, err.message);
+                console.error(`[ODDS API Parse Error] ${sport} ${market}:`, err.message);
+                console.error(`[DEBUG] Response length: ${data.length}, First 500 chars:`, data.substring(0, 500));
               }
 
               completed++;
@@ -343,12 +352,13 @@ bot.onText(/\/scan/, async (msg) => {
     const spreadCount = analyzedGems.filter(gem => gem.market === 'Spread').length;
     const totalCount = analyzedGems.filter(gem => gem.market === 'Total').length;
 
-    // Sort by Claude edge or original edge
+    // Sort by Claude edge or original edge (primary), then by EV (secondary)
     const topGems = analyzedGems
       .sort((a, b) => {
         const edgeA = a.claudeEdge !== undefined ? a.claudeEdge : a.edge;
         const edgeB = b.claudeEdge !== undefined ? b.claudeEdge : b.edge;
-        return edgeB - edgeA;
+        if (edgeB !== edgeA) return edgeB - edgeA; // Primary: higher edge first
+        return b.ev - a.ev; // Tiebreaker: higher EV first
       })
       .slice(0, 10);
     
