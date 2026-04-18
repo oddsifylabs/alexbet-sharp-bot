@@ -35,8 +35,7 @@ if (!ODDS_API_KEY) {
   process.exit(1);
 }
 if (!whopApiKey) {
-  console.error('❌ CRITICAL: WHOP_API_KEY not set in .env');
-  process.exit(1);
+  console.warn('⚠️ WARNING: WHOP_API_KEY not set in .env (subscription features will be disabled)');
 }
 const whopStoreUrl = 'https://whop.com/oddsify-shop';
 
