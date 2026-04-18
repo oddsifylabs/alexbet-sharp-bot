@@ -30,8 +30,10 @@ const whopApiKey = process.env.WHOP_API_KEY || 'apik_KKsouW3xnGXgD_C4864557_C_ff
 const whopStoreUrl = 'https://whop.com/oddsify-shop';
 
 // Initialize Claude optimizer
+// DISABLED (2026-04-18 09:02): Token cost runaway — 12M tokens in 24h
+// Re-enable after switching to Haiku-only or implementing rate limiting
 let claudeOptimizer = null;
-if (process.env.ANTHROPIC_API_KEY) {
+if (false && process.env.ANTHROPIC_API_KEY) {
   try {
     claudeOptimizer = new ClaudeOptimizer(process.env.ANTHROPIC_API_KEY);
     console.log('✅ Claude optimizer initialized');
