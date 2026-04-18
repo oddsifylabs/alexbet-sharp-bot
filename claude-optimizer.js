@@ -209,7 +209,12 @@ RESPONSE (JSON):`;
 
   parseHaikuResponse(text) {
     try {
-      const json = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) {
+        console.warn('[PARSE WARN] No JSON found in Haiku response');
+        return { edge: 0, confidence: 0, action: 'skip', model: 'haiku' };
+      }
+      const json = JSON.parse(match[0]);
       return {
         edge: json.edge || 0,
         confidence: json.confidence || 0,
@@ -224,7 +229,12 @@ RESPONSE (JSON):`;
 
   parseSonnetResponse(text) {
     try {
-      const json = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) {
+        console.warn('[PARSE WARN] No JSON found in Sonnet response');
+        return { edge: 0, confidence: 0, action: 'skip', model: 'sonnet' };
+      }
+      const json = JSON.parse(match[0]);
       return {
         edge: json.edge || 0,
         confidence: json.confidence || 0,
@@ -233,13 +243,19 @@ RESPONSE (JSON):`;
         model: 'sonnet'
       };
     } catch (e) {
+      console.error('[PARSE ERROR]', e.message);
       return { edge: 0, confidence: 0, action: 'skip', model: 'sonnet' };
     }
   }
 
   parseOpusResponse(text) {
     try {
-      const json = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) {
+        console.warn('[PARSE WARN] No JSON found in Opus response');
+        return { edge: 0, confidence: 0, clv: 0, factors: [], action: 'skip', model: 'opus' };
+      }
+      const json = JSON.parse(match[0]);
       return {
         edge: json.edge || 0,
         confidence: json.confidence || 0,
