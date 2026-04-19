@@ -382,6 +382,7 @@ Moneyline, Spread, Totals
 💳 Subscription Tiers:
 🔴 *Free:* 3 gems, Moneyline only
 🟡 *Monthly ($9.99):* 10 gems, ML + Totals
+🟠 *Monthly Plus ($25):* 30 gems, all markets
 🟢 *Yearly ($99.99):* 20 gems, all markets
 🟣 *Lifetime ($999):* Unlimited gems, all features
 
@@ -486,6 +487,7 @@ bot.onText(/\/scan/, async (msg) => {
       // Map subscription tier to gem limits and market access
       const tierConfig = {
         'monthly': { maxGems: 10, allowedMarkets: ['ML', 'Total'] },
+        'monthly_plus': { maxGems: 30, allowedMarkets: ['ML', 'Spread', 'Total'] },
         'yearly': { maxGems: 20, allowedMarkets: ['ML', 'Spread', 'Total'] },
         'lifetime': { maxGems: 9999, allowedMarkets: ['ML', 'Spread', 'Total'] }
       };
@@ -776,10 +778,18 @@ bot.onText(/\/subscribe/, (msg) => {
 ├─ Export: enabled
 └─ Payment: Telegram Stars
 
+*🟠 MONTHLY PLUS ($25 USD)*
+├─ 30 gems per scan (3x more!)
+├─ All markets (ML, Spreads, Totals)
+├─ Export: enabled
+├─ Best for aggressive scanners
+└─ Payment: Telegram Stars
+
 *🟢 YEARLY ($99.99 USD)*
 ├─ 20 gems per scan
 ├─ All markets (ML, Spreads, Totals)
 ├─ Export: enabled
+├─ Save 2 months vs Monthly
 └─ Payment: Telegram Stars
 
 *🟣 LIFETIME ($999 USD)*
@@ -1424,7 +1434,7 @@ bot.onText(/\/help/, (msg) => {
 📊 AlexBET Sharp Bot - Command Menu
 
 🔍 SCANNING
-/scan - Find top +EV gems (free: 3 ML, paid: 10-20+)
+/scan - Find top +EV gems (free: 3 ML, paid: 10-30+)
 /stats - View your performance stats
 
 📥 EXPORT (Premium only)
