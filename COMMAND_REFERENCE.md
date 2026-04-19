@@ -52,10 +52,11 @@ Moneyline, Spread, Totals
 💳 Subscription Tiers:
 🔴 Free: 3 gems, Moneyline only
 🟡 Monthly ($9.99): 10 gems, ML + Totals
+🟠 Monthly Plus ($25): 30 gems, all markets
 🟢 Yearly ($99.99): 20 gems, all markets
 🟣 Lifetime ($999): Unlimited gems, all features
 
-First, what's your bankroll? (or reply 100 for default)
+What's your betting bankroll? (minimum $10, or reply 10 for default)
 ```
 
 **User Flow**:
@@ -71,6 +72,7 @@ First, what's your bankroll? (or reply 100 for default)
 **Tier Restrictions**:
 - Free: 3 gems, Moneyline only
 - Monthly: 10 gems, Moneyline + Totals
+- Monthly Plus: 30 gems, all markets (ML, Spread, Total)
 - Yearly: 20 gems, all markets (ML, Spread, Total)
 - Lifetime: Unlimited gems, all markets
 
@@ -148,10 +150,18 @@ Track your P&L, win rate, and bet history:
 ├─ Export: enabled
 └─ Payment: Telegram Stars
 
+🟠 MONTHLY PLUS ($25 USD)
+├─ 30 gems per scan (3x more!)
+├─ All markets (ML, Spreads, Totals)
+├─ Export: enabled
+├─ Best for aggressive scanners
+└─ Payment: Telegram Stars
+
 🟢 YEARLY ($99.99 USD)
 ├─ 20 gems per scan
 ├─ All markets (ML, Spreads, Totals)
 ├─ Export: enabled
+├─ Save 2 months vs Monthly
 └─ Payment: Telegram Stars
 
 🟣 LIFETIME ($999 USD)
