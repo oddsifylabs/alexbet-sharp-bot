@@ -86,20 +86,32 @@ function americanToDecimal(odds) {
 
 function formatGameDateTime(dateString, timezone = 'America/New_York') {
   const date = new Date(dateString);
-  return {
-    gameDate: new Intl.DateTimeFormat('en-US', {
+  
+  // Ensure valid date
+  if (isNaN(date.getTime())) {
+    return { gameDate: 'N/A', gameTime: 'N/A' };
+  }
+  
+  try {
+    const gameDate = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
       month: '2-digit',
       day: '2-digit',
       year: '2-digit'
-    }).format(date),
-    gameTime: new Intl.DateTimeFormat('en-US', {
+    }).format(date);
+    
+    const gameTime = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
-    }).format(date)
-  };
+    }).format(date);
+    
+    return { gameDate, gameTime };
+  } catch (err) {
+    console.error('Error formatting date:', err.message);
+    return { gameDate: 'N/A', gameTime: 'N/A' };
+  }
 }
 
 function getOutcomeKey(outcome, market) {
@@ -485,7 +497,8 @@ bot.onText(/\/scan/, async (msg) => {
         
         msg += `\n${prefix} #${gemCounter} [${gem.betType}] ⚡ ${displayEdge > 0 ? '+' : ''}${displayEdge}%${confidence}\n`;
         msg += `   *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%\n`;
-        msg += `   ${gem.game} | ${gem.gameTime}\n`;
+        msg += `   📅 ${gem.gameDate} | 🕐 ${gem.gameTime}\n`;
+        msg += `   ${gem.game}\n`;
         msg += `   📍 ${gem.book} | 📚 ${gem.booksCompared}\n`;
         msg += `   💰 Kelly: $${gem.kelly} | 2%: $${gem.conservative.two}`;
         
@@ -808,8 +821,17 @@ bot.onText(/\/export_csv/, (msg) => {
     // Create CSV
     const result = exportToCSV(gems, userId);
     
-    bot.sendMessage(chatId, `✅ CSV file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported`);
-    logger.info('CSV export sent to user', { userId, filename: result.filename });
+    // Send the actual file to Telegram
+    bot.sendDocument(chatId, result.filepath, {
+      caption: `📊 CSV Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`
+    }, (err) => {
+      if (err) {
+        logger.error('Failed to send CSV file', { userId, error: err.message });
+        bot.sendMessage(chatId, `❌ Failed to send file: ${err.message}`);
+      } else {
+        logger.info('CSV file sent to user', { userId, filename: result.filename });
+      }
+    });
   } catch (err) {
     logger.error('CSV export error', { userId, error: err.message });
     bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
@@ -848,8 +870,17 @@ bot.onText(/\/export_txt/, (msg) => {
     // Create TXT
     const result = exportToTXT(gems, userId);
     
-    bot.sendMessage(chatId, `✅ TXT file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported\n\n📂 Check your downloads folder`);
-    logger.info('TXT export sent to user', { userId, filename: result.filename });
+    // Send the actual file to Telegram
+    bot.sendDocument(chatId, result.filepath, {
+      caption: `📋 TXT Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`
+    }, (err) => {
+      if (err) {
+        logger.error('Failed to send TXT file', { userId, error: err.message });
+        bot.sendMessage(chatId, `❌ Failed to send file: ${err.message}`);
+      } else {
+        logger.info('TXT file sent to user', { userId, filename: result.filename });
+      }
+    });
   } catch (err) {
     logger.error('TXT export error', { userId, error: err.message });
     bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
@@ -885,8 +916,17 @@ bot.onText(/\/export_json/, (msg) => {
     // Create JSON
     const result = exportToJSON(gems, userId);
     
-    bot.sendMessage(chatId, `✅ JSON file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported (including metadata)`);
-    logger.info('JSON export sent to user', { userId, filename: result.filename });
+    // Send the actual file to Telegram
+    bot.sendDocument(chatId, result.filepath, {
+      caption: `📄 JSON Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported (with metadata)`
+    }, (err) => {
+      if (err) {
+        logger.error('Failed to send JSON file', { userId, error: err.message });
+        bot.sendMessage(chatId, `❌ Failed to send file: ${err.message}`);
+      } else {
+        logger.info('JSON file sent to user', { userId, filename: result.filename });
+      }
+    });
   } catch (err) {
     logger.error('JSON export error', { userId, error: err.message });
     bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
