@@ -1,3 +1,0 @@
-rank,sport,market,pick,odds,edge_percent,ev_percent,implied_probability,kelly_percent,kelly_stake,conservative_2pct,game_date,game_time,game,best_book,books_compared
-1,NBA,Moneyline,Celtics -120,-120,4.20,3.80,N/A,0.50,50,N/A,04/19,7:30 PM,Celtics vs Nets,FanDuel,5
-2,NFL,Spread,Patriots +3.5,110,3.10,2.90,N/A,0.35,35,N/A,04/20,1:00 PM,Patriots vs Chiefs,DraftKings,5
