@@ -4,6 +4,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const ClaudeOptimizer = require('./claude-optimizer');
+const RateLimiter = require('./src/services/rateLimiter');
 const logger = require('./src/utils/logger');
 const { validateBankroll, validateTimezone, parseAPIResponse } = require('./src/utils/validation');
 const { exportToCSV, exportToTXT, exportToJSON, getAvailableExports } = require('./src/utils/export-handler');
@@ -54,6 +55,17 @@ if (process.env.ANTHROPIC_API_KEY) {
     console.warn('⚠️ Claude optimizer failed:', err.message);
   }
 }
+
+// Initialize rate limiters
+// scanLimiter: 10 requests per minute per user
+// apiRetryLimiter: Track API failures for adaptive backoff
+const scanLimiter = new RateLimiter(10, 60000); // 10 req/min
+const apiErrorTracker = new Map(); // userId -> {count, resetTime}
+
+logger.info('Rate limiters initialized', {
+  scanLimit: '10 requests per 60 seconds',
+  purpose: 'Prevent abuse and track API failures'
+});
 
 // User timezones (stored per user)
 const userTimezones = {};
@@ -383,6 +395,42 @@ bot.on('message', (msg) => {
   }
 });
 
+/**
+ * Retry with exponential backoff
+ * Implements: delay = initialDelay * 2^(attemptNumber-1)
+ * Attempt 1: 1s, Attempt 2: 2s, Attempt 3: 4s
+ */
+async function retryWithBackoff(fn, maxAttempts = 3, initialDelay = 1000) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      logger.debug('Attempting operation', { attempt, maxAttempts });
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      
+      if (attempt < maxAttempts) {
+        // Calculate exponential backoff: 1s, 2s, 4s, etc.
+        const delayMs = initialDelay * Math.pow(2, attempt - 1);
+        logger.warn('Request failed, retrying with backoff', {
+          attempt,
+          maxAttempts,
+          nextRetryInMs: delayMs,
+          nextRetryInSec: (delayMs / 1000).toFixed(1),
+          error: error.message
+        });
+        
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  
+  // All attempts failed
+  throw new Error(`Failed after ${maxAttempts} attempts: ${lastError.message}`);
+}
+
 // /scan command with Claude AI edge detection
 bot.onText(/\/scan/, async (msg) => {
   const chatId = msg.chat.id;
@@ -390,6 +438,16 @@ bot.onText(/\/scan/, async (msg) => {
   const userName = msg.from.username || 'anonymous';
   
   logger.info('User initiated /scan command', { userId, userName, chatId });
+  
+  // CHECK RATE LIMIT FIRST
+  const rateLimitStatus = scanLimiter.isRateLimited(userId);
+  if (rateLimitStatus.limited) {
+    const waitTime = rateLimitStatus.secondsLeft;
+    const userMsg = `⏱️ Rate limited! Please wait ${waitTime}s before next scan.\n\n📊 Limit: ${rateLimitStatus.maxRequests} scans per minute.`;
+    bot.sendMessage(chatId, userMsg);
+    logger.warn('User rate limited for /scan', { userId, waitTime, limit: rateLimitStatus.maxRequests });
+    return; // Stop processing
+  }
   
   // Get user's bankroll or use default
   const bankroll = userBankrolls[userId] || 100;
@@ -403,7 +461,27 @@ bot.onText(/\/scan/, async (msg) => {
   
   try {
     logger.debug('Fetching gems from Odds API', { userId, bankroll, timezone });
-    const gems = await fetchRealGems(bankroll, timezone);
+    
+    // Fetch gems with exponential backoff (3 attempts: 1s, 2s, 4s)
+    let gems;
+    try {
+      gems = await retryWithBackoff(
+        () => fetchRealGems(bankroll, timezone),
+        3,    // max attempts
+        1000  // initial delay (1 second)
+      );
+    } catch (retryError) {
+      logger.error('Gems fetch failed after all retry attempts', {
+        userId,
+        error: retryError.message
+      });
+      bot.sendMessage(
+        chatId,
+        `❌ Unable to fetch gems after 3 attempts.\n\nAPI may be overloaded. Please try again in a moment.`
+      );
+      return;
+    }
+    
     const fetchDuration = ((Date.now() - scanStartTime) / 1000).toFixed(3);
     
     if (!gems || gems.length === 0) {
@@ -551,16 +629,40 @@ bot.onText(/\/scan/, async (msg) => {
     });
     
     // Provide helpful context about the error
+    const isNetworkError = err.message.includes('ECONNREFUSED') || 
+                          err.message.includes('ENOTFOUND') || 
+                          err.message.includes('ETIMEDOUT');
+    const isRateLimitError = err.message.includes('429') || 
+                            err.message.includes('rate limit');
+    const isTimeoutError = err.message.includes('timeout') || 
+                          err.message.includes('5 second');
+    
     let errorContext = 'An error occurred while scanning odds';
-    if (err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND')) {
+    let suggestion = 'Try again in a few minutes.';
+    
+    if (isNetworkError) {
       errorContext = '🔌 Network connection failed';
-    } else if (err.message.includes('429') || err.message.includes('rate')) {
+      suggestion = 'Check your connection and try again.';
+    } else if (isRateLimitError) {
       errorContext = '⚡ API rate limit exceeded';
-    } else if (err.message.includes('timeout')) {
+      suggestion = 'The API is overloaded. Wait a few minutes.';
+    } else if (isTimeoutError) {
       errorContext = '⏱️ Request timed out';
+      suggestion = 'API is slow. Try again in 30 seconds.';
+    } else if (err.message.includes('Failed after')) {
+      errorContext = '🔄 API unreliable';
+      suggestion = 'Multiple retries failed. Try again later.';
     }
     
-    bot.sendMessage(chatId, `❌ ${errorContext}\n\nTry again in a few minutes.`);
+    logger.error('Contextual error info', {
+      userId,
+      isNetworkError,
+      isRateLimitError,
+      isTimeoutError,
+      fullError: err.message
+    });
+    
+    bot.sendMessage(chatId, `❌ ${errorContext}\\n\\n${suggestion}`);
   }
 });
 
