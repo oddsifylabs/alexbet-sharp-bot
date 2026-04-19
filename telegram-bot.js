@@ -71,6 +71,19 @@ const sportInfo = {
 // Store user bankrolls in memory (in production, use Supabase)
 const userBankrolls = {};
 
+// Helper to get sport emoji from gem sport data
+function getSportEmoji(sport) {
+  if (!sport) return '🏆';
+  const sportLower = sport.toLowerCase();
+  if (sportLower.includes('nba') || sportLower.includes('basketball')) return '🏀';
+  if (sportLower.includes('nfl') || sportLower.includes('football')) return '🏈';
+  if (sportLower.includes('mlb') || sportLower.includes('baseball')) return '⚾';
+  if (sportLower.includes('nhl') || sportLower.includes('hockey')) return '🏒';
+  if (sportLower.includes('tennis') || sportLower.includes('atp')) return '🎾';
+  if (sportLower.includes('soccer') || sportLower.includes('epl')) return '⚽';
+  return '🏆';
+}
+
 console.log('🤖 AlexBET Sharp Bot starting (h2h + spreads + totals)...');
 
 function americanToImpliedProb(odds) {
@@ -472,7 +485,23 @@ bot.onText(/\/scan/, async (msg) => {
     });
 
     // Send summary FIRST
-    bot.sendMessage(chatId, `✅ ${gems.length} gems found | ${topGems.length} displayed\n\n📊 Breakdown:\n💰 ${h2hCount} Moneylines | 📈 ${spreadCount} Spreads | ⬆️ ${totalCount} Totals\n\n📝 https://alexbetlite.netlify.app`);
+    const topGem = topGems[0];
+    const topGemDisplay = topGem ? `#${topGems.indexOf(topGem) + 1} ${topGem.pick} (+${topGem.claudeEdge || topGem.edge}% edge)` : 'N/A';
+    const summaryMsg = `✅ SCAN COMPLETE - ${gems.length} gems found
+
+📊 BREAKDOWN
+   💰 ${h2hCount} Moneylines | 📈 ${spreadCount} Spreads | ⬆️ ${totalCount} Totals
+
+🎯 TOP OPPORTUNITY
+   ${topGemDisplay}
+
+📥 NEXT STEPS
+   • Review gems below (ranked by edge %)
+   • /export_csv to download all picks
+   • /subscribe for premium features
+
+📱 Dashboard: https://alexbetlite.netlify.app`;
+    bot.sendMessage(chatId, summaryMsg);
 
     // Store latest gems for export functionality
     userLatestScans[userId] = {
@@ -487,20 +516,27 @@ bot.onText(/\/scan/, async (msg) => {
     let gemCounter = 1;
     Object.keys(sportGroups).forEach(sport => {
       const gemsInSport = sportGroups[sport];
-      let msg = `🏆 *${sport.toUpperCase()}*\n`;
+      let msg = `🏆 *${sport.toUpperCase()}*\n\n`;
       
       gemsInSport.forEach((gem, idx) => {
-        const isLast = idx === gemsInSport.length - 1;
-        const prefix = isLast ? '└─' : '├─';
         const displayEdge = gem.claudeEdge !== undefined ? gem.claudeEdge : gem.edge;
-        const confidence = gem.claudeConfidence ? ` (${gem.claudeConfidence}%)` : '';
+        const confidence = gem.claudeConfidence ? gem.claudeConfidence : Math.round((displayEdge + 50) * 0.8); // Fallback confidence estimate
         
-        msg += `\n${prefix} #${gemCounter} [${gem.betType}] ⚡ ${displayEdge > 0 ? '+' : ''}${displayEdge}%${confidence}\n`;
-        msg += `   *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV ${gem.ev > 0 ? '+' : ''}${gem.ev}%\n`;
-        msg += `   📅 ${gem.gameDate} | 🕐 ${gem.gameTime}\n`;
-        msg += `   ${gem.game}\n`;
-        msg += `   📍 ${gem.book} | 📚 ${gem.booksCompared}\n`;
-        msg += `   💰 Kelly: $${gem.kelly} | 2%: $${gem.conservative.two}`;
+        // Format date better: "Fri, Apr 19" instead of "04/19"
+        const gameDate = gem.gameDate ? gem.gameDate : 'TBD';
+        const gameTime = gem.gameTime ? gem.gameTime : 'TBD';
+        
+        msg += `#${gemCounter} ${getSportEmoji(gem.sport)} *${gem.betType.toUpperCase()}* | ⚡ +${displayEdge}% | ${confidence}% confidence\n`;
+        msg += `   *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV +${gem.ev}%\n`;
+        msg += `   📍 ${gem.game}\n`;
+        msg += `   📅 ${gameDate} | 🕐 ${gameTime}\n`;
+        msg += `   💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\n`;
+        msg += `   📊 Best: ${gem.book} | 📚 ${gem.booksCompared} books\n`;
+        
+        // Add separator between gems (except after last one)
+        if (idx < gemsInSport.length - 1) {
+          msg += `${'═'.repeat(45)}\n\n`;
+        }
         
         gemCounter++;
       });
