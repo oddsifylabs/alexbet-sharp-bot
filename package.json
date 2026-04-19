@@ -17,8 +17,10 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.16.1",
     "@supabase/supabase-js": "^2.38.0",
+    "node-cron": "^4.2.1",
     "node-fetch": "^2.6.7",
     "node-telegram-bot-api": "^0.64.0",
+    "postgres": "^3.4.9",
     "winston": "^3.19.0"
   },
   "optionalDependencies": {

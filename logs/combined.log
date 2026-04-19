@@ -11,3 +11,11 @@
 {"fileSize":1190,"filename":"alexbet-scan-123456-2026-04-19.json","gemsCount":2,"level":"info","message":"JSON export created","service":"alexbet-bot","timestamp":"2026-04-18 17:53:29","userId":123456}
 {"fileSize":261,"filename":"alexbet-scan-123456-2026-04-19.csv","gemsCount":1,"level":"info","message":"CSV export created","service":"alexbet-bot","timestamp":"2026-04-18 17:58:24","userId":123456}
 {"fileSize":354,"filename":"alexbet-scan-123456-2026-04-19.csv","gemsCount":2,"level":"info","message":"CSV export created","service":"alexbet-bot","timestamp":"2026-04-18 18:00:33","userId":123456}
+{"level":"info","message":"✅ Telegram Stars payment handlers registered","service":"alexbet-bot","timestamp":"2026-04-19 10:39:46"}
+{"level":"info","maxRequests":10,"message":"RateLimiter initialized","service":"alexbet-bot","timestamp":"2026-04-19 10:39:46","windowMs":60000,"windowSeconds":60}
+{"level":"info","message":"Rate limiters initialized","purpose":"Prevent abuse and track API failures","scanLimit":"10 requests per 60 seconds","service":"alexbet-bot","timestamp":"2026-04-19 10:39:46"}
+{"level":"info","message":"✅ Supabase tables verified","service":"alexbet-bot","timestamp":"2026-04-19 10:39:47"}
+{"level":"info","message":"✅ Telegram Stars payment handlers registered","service":"alexbet-bot","timestamp":"2026-04-19 10:44:10"}
+{"level":"info","maxRequests":10,"message":"RateLimiter initialized","service":"alexbet-bot","timestamp":"2026-04-19 10:44:10","windowMs":60000,"windowSeconds":60}
+{"level":"info","message":"Rate limiters initialized","purpose":"Prevent abuse and track API failures","scanLimit":"10 requests per 60 seconds","service":"alexbet-bot","timestamp":"2026-04-19 10:44:10"}
+{"level":"info","message":"✅ Supabase tables verified","service":"alexbet-bot","timestamp":"2026-04-19 10:44:10"}
