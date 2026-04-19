@@ -385,7 +385,7 @@ Moneyline, Spread, Totals
 🟢 *Yearly ($99.99):* 20 gems, all markets
 🟣 *Lifetime ($999):* Unlimited gems, all features
 
-First, what's your bankroll? (or reply 100 for default)
+What's your betting bankroll? (minimum $10, or reply 10 for default)
   `, { parse_mode: 'Markdown' });
   
   userBankrolls[userId] = 'awaiting_bankroll';
