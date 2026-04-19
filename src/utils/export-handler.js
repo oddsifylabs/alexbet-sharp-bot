@@ -18,16 +18,22 @@ if (!fs.existsSync(EXPORTS_DIR)) {
  * Works with both API format and bot format
  */
 function formatGem(gem, index) {
+  // Helper to safely convert to number
+  const toNumber = (val) => {
+    if (typeof val === 'string') return parseFloat(val);
+    return val;
+  };
+  
   return {
     rank: index + 1,
     sport: gem.sport || 'N/A',
     market: gem.market || gem.betType || 'N/A',
     pick: gem.pick || 'N/A',
     odds: gem.odds || 'N/A',
-    edge_percent: (gem.edge_percent || gem.edge) ? (gem.edge_percent || gem.edge).toFixed(2) : 'N/A',
-    ev_percent: (gem.ev_percent || gem.ev) ? (gem.ev_percent || gem.ev).toFixed(2) : 'N/A',
-    implied_probability: gem.implied_probability ? gem.implied_probability.toFixed(2) : 'N/A',
-    kelly_percent: (gem.kelly_percent || gem.kelly) ? ((gem.kelly_percent || gem.kelly) / 100).toFixed(2) : 'N/A',
+    edge_percent: (gem.edge_percent || gem.edge) ? toNumber(gem.edge_percent || gem.edge).toFixed(2) : 'N/A',
+    ev_percent: (gem.ev_percent || gem.ev) ? toNumber(gem.ev_percent || gem.ev).toFixed(2) : 'N/A',
+    implied_probability: gem.implied_probability ? toNumber(gem.implied_probability).toFixed(2) : 'N/A',
+    kelly_percent: (gem.kelly_percent || gem.kelly) ? (toNumber(gem.kelly_percent || gem.kelly) / 100).toFixed(2) : 'N/A',
     kelly_stake: gem.kelly_stake || gem.kelly || 'N/A',
     conservative_2pct: gem.conservative_stake_2pct || 'N/A',
     game_date: gem.game_date || gem.gameDate || 'N/A',

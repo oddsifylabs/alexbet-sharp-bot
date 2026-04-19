@@ -9,3 +9,4 @@
 {"fileSize":369,"filename":"alexbet-scan-123456-2026-04-19.csv","gemsCount":2,"level":"info","message":"CSV export created","service":"alexbet-bot","timestamp":"2026-04-18 17:53:29","userId":123456}
 {"fileSize":3480,"filename":"alexbet-scan-123456-2026-04-19.txt","gemsCount":2,"level":"info","message":"TXT export created","service":"alexbet-bot","timestamp":"2026-04-18 17:53:29","userId":123456}
 {"fileSize":1190,"filename":"alexbet-scan-123456-2026-04-19.json","gemsCount":2,"level":"info","message":"JSON export created","service":"alexbet-bot","timestamp":"2026-04-18 17:53:29","userId":123456}
+{"fileSize":261,"filename":"alexbet-scan-123456-2026-04-19.csv","gemsCount":1,"level":"info","message":"CSV export created","service":"alexbet-bot","timestamp":"2026-04-18 17:58:24","userId":123456}
