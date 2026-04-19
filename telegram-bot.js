@@ -241,30 +241,26 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                   const { gameDate, gameTime } = formatGameDateTime(game.commence_time, timezone);
                   const outcomeMap = new Map();
 
+                  // ✅ FIX: Collect raw implied probabilities (no normalization by vig)
                   bookmakers.forEach(bookmaker => {
                     const bookMarket = (bookmaker.markets || []).find(m => m.key === market);
                     const outcomes = bookMarket?.outcomes || [];
                     if (outcomes.length < 2) return;
 
-                    const implieds = outcomes.map(o => americanToImpliedProb(o.price)).filter(v => v != null);
-                    const vigTotal = implieds.reduce((sum, value) => sum + value, 0);
-                    if (!vigTotal) return;
-
                     outcomes.forEach(outcome => {
                       const impliedProb = americanToImpliedProb(outcome.price);
                       if (impliedProb == null) return;
 
-                      const fairProb = impliedProb / vigTotal;
                       const key = getOutcomeKey(outcome, market);
                       const existing = outcomeMap.get(key) || {
                         outcome,
-                        fairProbs: [],
+                        impliedProbs: [],  // ✅ Changed: store raw implied probs
                         bestPrice: null,
                         bestBook: null,
                         books: 0
                       };
 
-                      existing.fairProbs.push(fairProb);
+                      existing.impliedProbs.push(impliedProb);  // ✅ Changed: push raw implied prob
                       existing.books += 1;
 
                       if (existing.bestPrice == null || Number(outcome.price) > existing.bestPrice) {
@@ -276,18 +272,25 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                     });
                   });
 
-                  outcomeMap.forEach(({ outcome, fairProbs, bestPrice, bestBook, books }) => {
-                    if (!fairProbs.length || bestPrice == null || books < 2) return;
+                  // ✅ FIX: Calculate edge using market consensus (no vig normalization)
+                  outcomeMap.forEach(({ outcome, impliedProbs, bestPrice, bestBook, books }) => {
+                    if (!impliedProbs.length || bestPrice == null || books < 2) return;
 
-                    const fairProb = fairProbs.reduce((sum, value) => sum + value, 0) / fairProbs.length;
-                    const impliedProb = americanToImpliedProb(bestPrice);
+                    // Market consensus = average of raw implied probs across all bookmakers
+                    const consensusProb = impliedProbs.reduce((sum, value) => sum + value, 0) / impliedProbs.length;
+                    
+                    // Best odds imply this probability
+                    const bestOddsImpliedProb = americanToImpliedProb(bestPrice);
+                    
+                    // Edge: positive when consensus > best odds (value opportunity)
+                    const edge = (consensusProb - bestOddsImpliedProb) * 100;
+                    
                     const decimalOdds = americanToDecimal(bestPrice);
-                    const ev = (fairProb * decimalOdds) - 1;
-                    const edge = (fairProb - impliedProb) * 100;
+                    const ev = (consensusProb * decimalOdds) - 1;
 
                     if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.01) return;
 
-                    const kelly = calculateKellyStake(bankroll, fairProb, bestPrice);
+                    const kelly = calculateKellyStake(bankroll, consensusProb, bestPrice);  // ✅ Changed: use consensusProb
                     const conservative1pct = Math.floor(bankroll * 0.01);
                     const conservative1_5pct = Math.floor(bankroll * 0.015);
                     const conservative2pct = Math.floor(bankroll * 0.02);
