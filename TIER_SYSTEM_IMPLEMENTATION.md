@@ -2,7 +2,8 @@
 
 **Date**: April 19, 2026  
 **Status**: ✅ IMPLEMENTED & LIVE  
-**Commit**: 7472b1b  
+**Last Updated**: April 19, 2026 - Added Monthly Plus tier  
+**Commit**: 817da70  
 
 ---
 
@@ -40,6 +41,17 @@
 - **Export**: ✅ Enabled (CSV, JSON, TXT)
 - **Access**: Telegram Stars payment
 
+### Monthly Plus Tier ($25 USD)
+- **Max Gems**: 30 per scan (3x more than Monthly!)
+- **Allowed Markets**:
+  - Moneyline (ML)
+  - Spreads
+  - Totals
+  - ✅ All market types
+- **Export**: ✅ Enabled (CSV, JSON, TXT)
+- **Access**: Telegram Stars payment
+- **Target Users**: Aggressive scanners wanting full market access without yearly commitment
+
 ### Yearly Tier ($99.99 USD)
 - **Max Gems**: 20 per scan
 - **Allowed Markets**:
@@ -75,6 +87,7 @@ try {
   if (subStatus && subStatus.tier && subStatus.tier !== 'free') {
     const tierConfig = {
       'monthly': { maxGems: 10, allowedMarkets: ['ML', 'Total'] },
+      'monthly_plus': { maxGems: 30, allowedMarkets: ['ML', 'Spread', 'Total'] },
       'yearly': { maxGems: 20, allowedMarkets: ['ML', 'Spread', 'Total'] },
       'lifetime': { maxGems: 9999, allowedMarkets: ['ML', 'Spread', 'Total'] }
     };
@@ -164,11 +177,11 @@ bot.onText(/\/export/, async (msg) => {
 
 The bot recognizes three market types from the Odds API:
 
-| API Key | Display Name | Free | Monthly | Yearly | Lifetime |
-|---------|--------------|------|---------|--------|----------|
-| `h2h` | ML (Moneyline) | ✅ | ✅ | ✅ | ✅ |
-| `spreads` | Spread | ❌ | ❌ | ✅ | ✅ |
-| `totals` | Total | ❌ | ✅ | ✅ | ✅ |
+| API Key | Display Name | Free | Monthly | Monthly Plus | Yearly | Lifetime |
+|---------|--------------|------|---------|--------------|--------|----------|
+| `h2h` | ML (Moneyline) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `spreads` | Spread | ❌ | ❌ | ✅ | ✅ | ✅ |
+| `totals` | Total | ❌ | ✅ | ✅ | ✅ | ✅ |
 
 **Code Location**: Line 239
 ```javascript
@@ -281,6 +294,7 @@ logger.info('Gems filtered by subscription tier', {
 - Example: 5 ML + 3 Spread + 2 Total gems found
 - Free user: sees 3 ML only (filters remove Spread & Total)
 - Monthly user: sees 7 gems (ML + Total, removes Spread)
+- Monthly Plus user: sees all 10 gems (all markets)
 - Yearly user: sees all 10 gems
 
 ### Case 4: No Gems Match User's Markets
@@ -296,9 +310,12 @@ logger.info('Gems filtered by subscription tier', {
 - [ ] Free tier user runs `/export` → blocked with upgrade message
 - [ ] Monthly user runs `/scan` → sees ML + Totals, max 10, no Spreads
 - [ ] Monthly user runs `/export` → works, exports 10 gems
+- [ ] Monthly Plus user runs `/scan` → sees all markets (ML, Spreads, Totals), max 30
+- [ ] Monthly Plus user runs `/export` → works, exports 30 gems
 - [ ] Yearly user runs `/scan` → sees all types, max 20
 - [ ] Yearly user runs `/export` → works, exports 20 gems
-- [ ] User subscribes → next scan uses new tier limits
+- [ ] Lifetime user runs `/scan` → sees all types, unlimited gems
+- [ ] User subscribes to Monthly Plus → next scan shows 30 gems from all markets
 - [ ] Supabase down → falls back to free tier, no crash
 - [ ] Confidence formula still works for all tiers
 - [ ] Summary shows correct breakdown (# ML, # Spreads, # Totals)
