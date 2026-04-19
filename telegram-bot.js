@@ -621,8 +621,17 @@ bot.onText(/\/scan/, async (msg) => {
       let msg = `🏆 *${sport.toUpperCase()}*\n\n`;
       
       gemsInSport.forEach((gem, idx) => {
-        const displayEdge = gem.claudeEdge !== undefined ? gem.claudeEdge : gem.edge;
-        const confidence = gem.claudeConfidence ? gem.claudeConfidence : Math.round((displayEdge + 50) * 0.8); // Fallback confidence estimate
+        // ✅ Use math-based edge (more reliable than Claude's vague analysis)
+        const displayEdge = gem.edge;
+        
+        // ✅ Calculate confidence based on:
+        // - Edge strength (higher edge = higher confidence)
+        // - EV strength (validates edge with expected value)
+        // - Consensus quality (more bookmakers = higher confidence)
+        const edgeConfidence = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(displayEdge) * 6)))); // 1% edge = 56%, 5% edge = 80%
+        const evBonus = gem.ev > 5 ? 8 : gem.ev > 2 ? 4 : 0;
+        const consensusBonus = gem.booksCompared >= 5 ? 12 : gem.booksCompared >= 3 ? 8 : 0;
+        const confidence = Math.min(95, edgeConfidence + evBonus + consensusBonus); // Confidence formula
         
         // Format date better: "Fri, Apr 19" instead of "04/19"
         const gameDate = gem.gameDate ? gem.gameDate : 'TBD';
