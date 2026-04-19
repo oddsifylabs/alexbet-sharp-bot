@@ -815,6 +815,7 @@ bot.onText(/\/export_csv/, (msg) => {
       ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
       kelly_stake: gem.kelly || 'N/A',
       game: gem.game || 'N/A',
+      game_date: gem.gameDate || 'N/A',
       game_time: gem.gameTime || 'N/A'
     }));
 
@@ -910,6 +911,7 @@ bot.onText(/\/export_json/, (msg) => {
       ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
       kelly_stake: gem.kelly || 'N/A',
       game: gem.game || 'N/A',
+      game_date: gem.gameDate || 'N/A',
       game_time: gem.gameTime || 'N/A'
     }));
 

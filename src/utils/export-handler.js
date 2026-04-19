@@ -30,6 +30,9 @@ function formatGem(gem, index) {
     kelly_percent: (gem.kelly_percent || gem.kelly) ? ((gem.kelly_percent || gem.kelly) / 100).toFixed(2) : 'N/A',
     kelly_stake: gem.kelly_stake || gem.kelly || 'N/A',
     conservative_2pct: gem.conservative_stake_2pct || 'N/A',
+    game_date: gem.game_date || gem.gameDate || 'N/A',
+    game_time: gem.game_time || gem.gameTime || 'N/A',
+    game: gem.game || 'N/A',
     best_book: gem.best_book || gem.book || 'N/A',
     books_compared: gem.books_compared || 5
   };

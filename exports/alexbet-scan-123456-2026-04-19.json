@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "exportDate": "2026-04-19T00:53:29.686Z",
+    "userId": 123456,
+    "totalGems": 2,
+    "version": "2.0"
+  },
+  "gems": [
+    {
+      "rank": 1,
+      "sport": "NBA",
+      "market": "Moneyline",
+      "pick": "Celtics -120",
+      "odds": -120,
+      "edge_percent": "4.20",
+      "ev_percent": "3.80",
+      "implied_probability": "N/A",
+      "kelly_percent": "0.50",
+      "kelly_stake": 50,
+      "conservative_2pct": "N/A",
+      "game_date": "04/19",
+      "game_time": "7:30 PM",
+      "game": "Celtics vs Nets",
+      "best_book": "FanDuel",
+      "books_compared": 5
+    },
+    {
+      "rank": 2,
+      "sport": "NFL",
+      "market": "Spread",
+      "pick": "Patriots +3.5",
+      "odds": 110,
+      "edge_percent": "3.10",
+      "ev_percent": "2.90",
+      "implied_probability": "N/A",
+      "kelly_percent": "0.35",
+      "kelly_stake": 35,
+      "conservative_2pct": "N/A",
+      "game_date": "04/20",
+      "game_time": "1:00 PM",
+      "game": "Patriots vs Chiefs",
+      "best_book": "DraftKings",
+      "books_compared": 5
+    }
+  ],
+  "summary": {
+    "totalGemsFound": 2,
+    "avgEdge": "3.65",
+    "sports": [
+      "NBA",
+      "NFL"
+    ]
+  }
+}
