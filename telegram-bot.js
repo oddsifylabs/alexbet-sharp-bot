@@ -1,9 +1,12 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const ClaudeOptimizer = require('./claude-optimizer');
 const logger = require('./src/utils/logger');
 const { validateBankroll, validateTimezone, parseAPIResponse } = require('./src/utils/validation');
+const { exportToCSV, exportToTXT, exportToJSON, getAvailableExports } = require('./src/utils/export-handler');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -459,6 +462,15 @@ bot.onText(/\/scan/, async (msg) => {
     // Send summary FIRST
     bot.sendMessage(chatId, `✅ ${gems.length} gems found | ${topGems.length} displayed\n\n📊 Breakdown:\n💰 ${h2hCount} Moneylines | 📈 ${spreadCount} Spreads | ⬆️ ${totalCount} Totals\n\n📝 https://alexbetlite.netlify.app`);
 
+    // Store latest gems for export functionality
+    userLatestScans[userId] = {
+      gems: topGems,
+      timestamp: Date.now(),
+      count: gems.length,
+      date: new Date().toISOString()
+    };
+    logger.info('Scan results stored for export', { userId, gemsCount: topGems.length });
+
     // Then send sport-grouped gem cards
     let gemCounter = 1;
     Object.keys(sportGroups).forEach(sport => {
@@ -547,6 +559,19 @@ Track every bet with CLV analysis:
 🎯 Target: 56-65% win rate + positive CLV
   `, { parse_mode: 'Markdown' });
 });
+
+// Store latest scan results per user (for export functionality)
+const userLatestScans = {};
+
+// Cleanup old scans every hour
+setInterval(() => {
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  Object.keys(userLatestScans).forEach(userId => {
+    if (userLatestScans[userId].timestamp < oneHourAgo) {
+      delete userLatestScans[userId];
+    }
+  });
+}, 60 * 60 * 1000);
 
 // Discord/Slack alert configuration
 let alertConfig = {
@@ -741,78 +766,131 @@ bot.on('callback_query', (q) => {
 // Export feature - CSV, JSON, PDF
 bot.onText(/\/export/, (msg) => {
   const chatId = msg.chat.id;
-  const message = `📊 Export Your Data
+  const userId = msg.from.id;
 
-Choose format:
+  // Check if user has recent scan
+  const userScans = userLatestScans[userId];
+  if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+    bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export the results.`);
+    return;
+  }
 
-/export_csv - Download as CSV (Excel)
-/export_json - Download as JSON (backup)
-/export_pdf - Download as PDF report
-
-Exports include:
-✅ All bets (dates, odds, results)
-✅ Performance stats
-✅ By-sport breakdown
-✅ CLV analysis`;
+  const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_csv - Download as CSV (Excel)\n/export_txt - Download as TXT (readable)\n/export_json - Download as JSON (backup)`;
   bot.sendMessage(chatId, message);
 });
 
 // CSV export
 bot.onText(/\/export_csv/, (msg) => {
   const chatId = msg.chat.id;
-  const message = `📥 CSV Export Ready
+  const userId = msg.from.id;
 
-Format: Date, Pick, Sport, Type, Odds, Edge%, Stake, Status, P&L, CLV%
+  try {
+    // Check if user has recent scan
+    const userScans = userLatestScans[userId];
+    if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      return;
+    }
 
-Features:
-✅ Open in Excel/Google Sheets
-✅ Pivot tables ready
-✅ Real-time data
-✅ Download via web app
+    // Convert gems to export format
+    const gems = userScans.gems.map(gem => ({
+      sport: gem.sport || 'N/A',
+      market: gem.betType || 'N/A',
+      pick: gem.pick || 'N/A',
+      odds: gem.odds || 'N/A',
+      edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
+      ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
+      kelly_stake: gem.kelly || 'N/A',
+      game: gem.game || 'N/A',
+      game_time: gem.gameTime || 'N/A'
+    }));
 
-💾 Export from: https://alexbetlite.netlify.app`;
-  bot.sendMessage(chatId, message);
+    // Create CSV
+    const result = exportToCSV(gems, userId);
+    
+    bot.sendMessage(chatId, `✅ CSV file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported`);
+    logger.info('CSV export sent to user', { userId, filename: result.filename });
+  } catch (err) {
+    logger.error('CSV export error', { userId, error: err.message });
+    bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
+  }
+});
+
+// TXT export
+bot.onText(/\/export_txt/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    // Check if user has recent scan
+    const userScans = userLatestScans[userId];
+    if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      return;
+    }
+
+    // Convert gems to export format
+    const gems = userScans.gems.map(gem => ({
+      sport: gem.sport || 'N/A',
+      market: gem.betType || 'N/A',
+      pick: gem.pick || 'N/A',
+      odds: gem.odds || 'N/A',
+      edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
+      ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
+      kelly_percent: gem.kelly ? (gem.kelly / 100).toFixed(2) : 'N/A',
+      kelly_stake: gem.kelly || 'N/A',
+      game: gem.game || 'N/A',
+      game_time: gem.gameTime || 'N/A',
+      best_book: gem.book || 'N/A',
+      books_compared: 5
+    }));
+
+    // Create TXT
+    const result = exportToTXT(gems, userId);
+    
+    bot.sendMessage(chatId, `✅ TXT file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported\n\n📂 Check your downloads folder`);
+    logger.info('TXT export sent to user', { userId, filename: result.filename });
+  } catch (err) {
+    logger.error('TXT export error', { userId, error: err.message });
+    bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
+  }
 });
 
 // JSON export
 bot.onText(/\/export_json/, (msg) => {
   const chatId = msg.chat.id;
-  const message = `📥 JSON Export Ready
+  const userId = msg.from.id;
 
-Format: Structured JSON with all metadata
+  try {
+    // Check if user has recent scan
+    const userScans = userLatestScans[userId];
+    if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      return;
+    }
 
-Includes:
-✅ Complete bet history
-✅ User stats
-✅ Timestamps
-✅ Performance metrics
-✅ Metadata
+    // Convert gems to export format
+    const gems = userScans.gems.map(gem => ({
+      sport: gem.sport || 'N/A',
+      market: gem.betType || 'N/A',
+      pick: gem.pick || 'N/A',
+      odds: gem.odds || 'N/A',
+      edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
+      ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
+      kelly_stake: gem.kelly || 'N/A',
+      game: gem.game || 'N/A',
+      game_time: gem.gameTime || 'N/A'
+    }));
 
-🔄 Perfect for: Backup, integration, analysis
-
-💾 Export from: https://alexbetlite.netlify.app`;
-  bot.sendMessage(chatId, message);
-});
-
-// PDF export
-bot.onText(/\/export_pdf/, (msg) => {
-  const chatId = msg.chat.id;
-  const message = `📥 PDF Report Ready
-
-Format: Professional PDF report
-
-Includes:
-✅ Performance summary
-✅ Statistics by sport
-✅ Charts & graphs
-✅ Win rate analysis
-✅ CLV metrics
-✅ Month-over-month trends
-
-📄 Professional format for: Sharing, printing, archiving
-
-💾 Export from: https://alexbetlite.netlify.app`;
-  bot.sendMessage(chatId, message);
+    // Create JSON
+    const result = exportToJSON(gems, userId);
+    
+    bot.sendMessage(chatId, `✅ JSON file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported (including metadata)`);
+    logger.info('JSON export sent to user', { userId, filename: result.filename });
+  } catch (err) {
+    logger.error('JSON export error', { userId, error: err.message });
+    bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
+  }
 });
 
 // /subscribe command - Show Whop products

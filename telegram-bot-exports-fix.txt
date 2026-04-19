@@ -1,0 +1,130 @@
+// /help command
+// Export feature - CSV, JSON, PDF
+bot.onText(/\/export/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  // Check if user has recent scan
+  const userScans = userLatestScans[userId];
+  if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+    bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export the results.`);
+    return;
+  }
+
+  const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_csv - Download as CSV (Excel)\n/export_txt - Download as TXT (readable)\n/export_json - Download as JSON (backup)`;
+  bot.sendMessage(chatId, message);
+});
+
+// CSV export
+bot.onText(/\/export_csv/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    // Check if user has recent scan
+    const userScans = userLatestScans[userId];
+    if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      return;
+    }
+
+    // Convert gems to CSV format
+    const gems = userScans.gems.map(gem => ({
+      sport: gem.sport || 'N/A',
+      market: gem.betType || 'N/A',
+      pick: gem.pick || 'N/A',
+      odds: gem.odds || 'N/A',
+      edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
+      ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
+      kelly_stake: gem.kelly || 'N/A',
+      game: gem.game || 'N/A',
+      game_time: gem.gameTime || 'N/A'
+    }));
+
+    // Create CSV
+    const result = exportToCSV(gems, userId);
+    
+    bot.sendMessage(chatId, `✅ CSV file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported`);
+    logger.info('CSV export sent to user', { userId, filename: result.filename });
+  } catch (err) {
+    logger.error('CSV export error', { userId, error: err.message });
+    bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
+  }
+});
+
+// TXT export
+bot.onText(/\/export_txt/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    // Check if user has recent scan
+    const userScans = userLatestScans[userId];
+    if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      return;
+    }
+
+    // Convert gems to export format
+    const gems = userScans.gems.map(gem => ({
+      sport: gem.sport || 'N/A',
+      market: gem.betType || 'N/A',
+      pick: gem.pick || 'N/A',
+      odds: gem.odds || 'N/A',
+      edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
+      ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
+      kelly_percent: gem.kelly ? (gem.kelly / 100).toFixed(2) : 'N/A',
+      kelly_stake: gem.kelly || 'N/A',
+      game: gem.game || 'N/A',
+      game_time: gem.gameTime || 'N/A',
+      best_book: gem.book || 'N/A',
+      books_compared: 5
+    }));
+
+    // Create TXT
+    const result = exportToTXT(gems, userId);
+    
+    bot.sendMessage(chatId, `✅ TXT file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported\n\n📂 Check your downloads folder`);
+    logger.info('TXT export sent to user', { userId, filename: result.filename });
+  } catch (err) {
+    logger.error('TXT export error', { userId, error: err.message });
+    bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
+  }
+});
+
+// JSON export
+bot.onText(/\/export_json/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    // Check if user has recent scan
+    const userScans = userLatestScans[userId];
+    if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      return;
+    }
+
+    // Convert gems to export format
+    const gems = userScans.gems.map(gem => ({
+      sport: gem.sport || 'N/A',
+      market: gem.betType || 'N/A',
+      pick: gem.pick || 'N/A',
+      odds: gem.odds || 'N/A',
+      edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
+      ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
+      kelly_stake: gem.kelly || 'N/A',
+      game: gem.game || 'N/A',
+      game_time: gem.gameTime || 'N/A'
+    }));
+
+    // Create JSON
+    const result = exportToJSON(gems, userId);
+    
+    bot.sendMessage(chatId, `✅ JSON file created!\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n\n${result.gemsCount} gems exported (including metadata)`);
+    logger.info('JSON export sent to user', { userId, filename: result.filename });
+  } catch (err) {
+    logger.error('JSON export error', { userId, error: err.message });
+    bot.sendMessage(chatId, `❌ Export failed: ${err.message}`);
+  }
+});

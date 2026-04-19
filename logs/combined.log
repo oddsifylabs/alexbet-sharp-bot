@@ -1,0 +1,6 @@
+{"fileSize":348,"filename":"alexbet-scan-12345-2026-04-19.csv","gemsCount":3,"level":"info","message":"CSV export created","service":"alexbet-bot","timestamp":"2026-04-18 17:09:13","userId":12345}
+{"fileSize":4184,"filename":"alexbet-scan-12345-2026-04-19.txt","gemsCount":3,"level":"info","message":"TXT export created","service":"alexbet-bot","timestamp":"2026-04-18 17:09:13","userId":12345}
+{"fileSize":1385,"filename":"alexbet-scan-12345-2026-04-19.json","gemsCount":3,"level":"info","message":"JSON export created","service":"alexbet-bot","timestamp":"2026-04-18 17:09:13","userId":12345}
+{"error":"No gems to export","level":"error","message":"CSV export failed","service":"alexbet-bot","timestamp":"2026-04-18 17:09:13","userId":12345}
+{"fileSize":288,"filename":"alexbet-scan-99999-2026-04-19.csv","gemsCount":2,"level":"info","message":"CSV export created","service":"alexbet-bot","timestamp":"2026-04-18 17:09:20","userId":99999}
+{"fileSize":3482,"filename":"alexbet-scan-99999-2026-04-19.txt","gemsCount":2,"level":"info","message":"TXT export created","service":"alexbet-bot","timestamp":"2026-04-18 17:09:20","userId":99999}
