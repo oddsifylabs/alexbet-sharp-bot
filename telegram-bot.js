@@ -476,9 +476,30 @@ bot.onText(/\/scan/, async (msg) => {
   // Get user's bankroll or use default
   const bankroll = userBankrolls[userId] || 100;
   const timezone = userTimezones[userId] || 'America/New_York';
-  const isPremium = false; // TODO: Check user subscription from Whop
   
-  logger.debug('Scan parameters loaded', { userId, bankroll, timezone, isPremium });
+  // Check user subscription tier from Supabase
+  let subscription = { tier: 'free', maxGems: 3, allowedMarkets: ['ML'] };
+  try {
+    const subStatus = await supabaseClient.getUserSubscription(userId);
+    if (subStatus && subStatus.tier && subStatus.tier !== 'free') {
+      // Map subscription tier to gem limits and market access
+      const tierConfig = {
+        'monthly': { maxGems: 10, allowedMarkets: ['ML', 'Total'] },
+        'yearly': { maxGems: 20, allowedMarkets: ['ML', 'Spread', 'Total'] },
+        'lifetime': { maxGems: 9999, allowedMarkets: ['ML', 'Spread', 'Total'] }
+      };
+      subscription = {
+        tier: subStatus.tier,
+        maxGems: tierConfig[subStatus.tier]?.maxGems || 10,
+        allowedMarkets: tierConfig[subStatus.tier]?.allowedMarkets || ['ML', 'Total']
+      };
+    }
+  } catch (err) {
+    logger.warn('Failed to fetch subscription status, using free tier', { userId, error: err.message });
+    subscription = { tier: 'free', maxGems: 3, allowedMarkets: ['ML'] };
+  }
+  
+  logger.debug('Scan parameters loaded', { userId, bankroll, timezone, subscription: subscription.tier, maxGems: subscription.maxGems, allowedMarkets: subscription.allowedMarkets });
   
   bot.sendMessage(chatId, '🔄 Fetching live odds + Claude AI analysis...');
   const scanStartTime = Date.now();
@@ -516,8 +537,32 @@ bot.onText(/\/scan/, async (msg) => {
 
     logger.info('Gems fetched from API', { userId, gemCount: gems.length, fetchDuration });
 
+    // ✅ FIX: Filter gems by subscription tier's allowed markets
+    // Free: only ML (Moneyline)
+    // Monthly: ML + Totals
+    // Yearly+: ML + Spreads + Totals
+    const filteredGems = gems.filter(gem => subscription.allowedMarkets.includes(gem.market));
+    const filteredCount = gems.length - filteredGems.length;
+    
+    if (filteredCount > 0) {
+      logger.info('Gems filtered by subscription tier', { 
+        userId, 
+        tier: subscription.tier, 
+        allowedMarkets: subscription.allowedMarkets,
+        originalCount: gems.length, 
+        filteredCount,
+        remainingCount: filteredGems.length 
+      });
+    }
+    
+    if (filteredGems.length === 0) {
+      logger.warn('No gems available after market filtering', { userId, tier: subscription.tier, allowedMarkets: subscription.allowedMarkets });
+      bot.sendMessage(chatId, `⏳ No ${subscription.allowedMarkets.join('/')} opportunities right now.\n\nUpgrade your subscription for access to more markets: /subscribe`);
+      return;
+    }
+
     // Use Claude optimizer if available
-    let analyzedGems = gems;
+    let analyzedGems = filteredGems;
     let claudeStats = null;
     if (claudeOptimizer) {
       logger.debug('Starting Claude AI analysis pipeline', { userId, gemCount: gems.length });
@@ -567,7 +612,7 @@ bot.onText(/\/scan/, async (msg) => {
         if (edgeB !== edgeA) return edgeB - edgeA; // Primary: higher edge first
         return b.ev - a.ev; // Tiebreaker: higher EV first
       })
-      .slice(0, 10);
+      .slice(0, subscription.maxGems); // ✅ Apply tier-based gem limit (free: 3, monthly: 10, yearly: 20, lifetime: unlimited)
     
     // Group gems by sport
     const sportGroups = {};
@@ -947,26 +992,30 @@ bot.on('callback_query', (q) => {
 });
 
 // /help command
-// Export feature - CSV, JSON, PDF
+// Export feature - CSV, JSON, PDF (Premium only)
 bot.onText(/\/export/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
   try {
+    // ✅ FIX: Check subscription - Export disabled for free tier
+    const subscription = await supabaseClient.getUserSubscription(userId);
+    if (!subscription || subscription.tier === 'free') {
+      bot.sendMessage(chatId, `❌ Export feature is premium only.\n\n/subscribe to unlock:\n  • Unlimited gems\n  • CSV/JSON/PDF export\n  • Full market access (Spreads, Totals)\n  • Advanced statistics`);
+      return;
+    }
+    
     // Ensure user exists in database
     await supabaseClient.upsertUser(userId, msg.from.username || `user_${userId}`);
-    
-    // Check subscription
-    const isActive = await supabaseClient.isSubscriptionActive(userId);
     
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export the results.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export the results.`);
       return;
     }
 
-    const message = `📊 Export Your Latest Scan\\n\\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\\n\\nChoose format:\\n\\n/export_csv - Download as CSV (Excel)\\n/export_txt - Download as TXT (readable)\\n/export_json - Download as JSON (backup)`;
+    const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_csv - Download as CSV (Excel)\n/export_txt - Download as TXT (readable)\n/export_json - Download as JSON (backup)`;
     bot.sendMessage(chatId, message);
   } catch (err) {
     logger.error('Error in /export:', err);
@@ -980,21 +1029,25 @@ bot.onText(/\/export_csv/, async (msg) => {
   const userId = msg.from.id;
 
   try {
-    // Check subscription and enforce limit
-    const isActive = await supabaseClient.isSubscriptionActive(userId);
-    const maxGems = isActive ? 9999 : 3; // Free tier: 3 gems max
+    // ✅ FIX: Block export for free tier users
+    const subscription = await supabaseClient.getUserSubscription(userId);
+    if (!subscription || subscription.tier === 'free') {
+      bot.sendMessage(chatId, `❌ CSV export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
+      return;
+    }
     
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
       return;
     }
 
-    // Apply gem limit
+    // Apply gem limit based on subscription tier
+    const maxGems = subscription.maxGems || 10;
     let gemsToExport = userScans.gems.slice(0, maxGems);
-    if (userScans.gems.length > maxGems && !isActive) {
-      bot.sendMessage(chatId, `⚠️ Free tier limited to ${maxGems} gems. /subscribe for unlimited export`);
+    if (userScans.gems.length > maxGems) {
+      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} gems. Upgrade for more.`);
     }
 
     // Convert gems to export format
