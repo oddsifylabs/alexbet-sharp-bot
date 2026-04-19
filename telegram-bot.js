@@ -379,10 +379,11 @@ Find profitable sports betting edges. Real data only.
 🏀 NBA, 🏈 NFL, ⚾ MLB, 🏒 NHL, 🎾 Tennis, ⚽ Soccer
 Moneyline, Spread, Totals
 
-💰 Pricing:
-🟢 *Free:* 5 gems/day
-🟢 *Sharp:* $49/mo
-🟢 *Elite:* $99/mo
+💳 Subscription Tiers:
+🔴 *Free:* 3 gems, Moneyline only
+🟡 *Monthly ($9.99):* 10 gems, ML + Totals
+🟢 *Yearly ($99.99):* 20 gems, all markets
+🟣 *Lifetime ($999):* Unlimited gems, all features
 
 First, what's your bankroll? (or reply 100 for default)
   `, { parse_mode: 'Markdown' });
@@ -647,7 +648,7 @@ bot.onText(/\/scan/, async (msg) => {
    • /export_csv to download all picks
    • /subscribe for premium features
 
-📱 Dashboard: https://alexbetlite.netlify.app`;
+📱 Dashboard: https://alexbet-lite.netlify.app`;
     bot.sendMessage(chatId, summaryMsg);
 
     // Store latest gems for export functionality
@@ -752,7 +753,7 @@ bot.onText(/\/stats?/, (msg) => {
 🔄 This feature is coming soon!
 
 Track your P&L, win rate, and bet history:
-📊 https://alexbetlite.netlify.app
+📊 https://alexbet-lite.netlify.app
   `, { parse_mode: 'Markdown' });
 });
 
@@ -760,13 +761,35 @@ Track your P&L, win rate, and bet history:
 bot.onText(/\/subscribe/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
-*💎 Upgrade to Paid*
-🟢 Sharp $49/mo (player props)
-🟡 Elite $99/mo (team props + Ask Alex)
+*💎 AlexBET Sharp - Subscription Plans*
 
-Become a beta tester first at: https://alexbetlite.netlify.app
+*🔴 FREE TIER*
+├─ 3 gems per scan
+├─ Moneyline only
+├─ Export: disabled
+└─ Cost: Free
 
-Contact: support@alexbet.io
+*🟡 MONTHLY ($9.99 USD)*
+├─ 10 gems per scan
+├─ Moneyline + Totals
+├─ Spreads: not included
+├─ Export: enabled
+└─ Payment: Telegram Stars
+
+*🟢 YEARLY ($99.99 USD)*
+├─ 20 gems per scan
+├─ All markets (ML, Spreads, Totals)
+├─ Export: enabled
+└─ Payment: Telegram Stars
+
+*🟣 LIFETIME ($999 USD)*
+├─ Unlimited gems
+├─ All markets + future features
+├─ Export: all formats
+└─ Payment: One-time
+
+👉 Use /scan to start (free tier)
+👉 Use /subscribe again to upgrade via Telegram Stars
   `, { parse_mode: 'Markdown' });
 });
 
@@ -774,11 +797,11 @@ Contact: support@alexbet.io
 bot.onText(/\/lite/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
-📊 *ALexBET Lite*
+📊 *AlexBET Lite*
 
 Track every bet with CLV analysis:
 
-🔗 https://alexbetlite.netlify.app
+🔗 https://alexbet-lite.netlify.app
 
 ✅ Log entry odds when you place bet
 ✅ Update closing odds when game starts
@@ -917,7 +940,7 @@ Define your own betting formula:
 - Advanced: (WinRate - 0.5) * Odds * Kelly
 
 📑 *How to set up:*
-1. Visit https://alexbetlite.netlify.app
+1. Visit https://alexbet-lite.netlify.app
 2. Go to Settings tab
 3. Enter your formula
 4. Bot will calculate dual-model comparison
@@ -1401,10 +1424,10 @@ bot.onText(/\/help/, (msg) => {
 📊 AlexBET Sharp Bot - Command Menu
 
 🔍 SCANNING
-/scan - Find top +EV gems (5-18 results)
+/scan - Find top +EV gems (free: 3 ML, paid: 10-20+)
 /stats - View your performance stats
 
-📥 EXPORT (NEW!)
+📥 EXPORT (Premium only)
 /export - Export latest scan results
   ├─ /export_csv - Download as CSV (Excel)
   ├─ /export_txt - Download as readable text
@@ -1415,10 +1438,11 @@ bot.onText(/\/help/, (msg) => {
 /bankroll - Set betting bankroll
 
 💳 PREMIUM
-/subscribe - Upgrade account
-/pricing - View tier options
+/subscribe - View subscription tiers
+/pricing - Detailed pricing & features
 
 📖 HELP
+/lite - Open AlexBET Lite tracker
 /terms - Terms & Conditions
 /support - Customer support
 /paysupport - Payment issues
@@ -1426,9 +1450,9 @@ bot.onText(/\/help/, (msg) => {
 
 💡 TIP: Run /scan first, then /export to download results!
 
-📱 Full dashboard: https://alexbetlite.netlify.app
+📱 Full dashboard: https://alexbet-lite.netlify.app
 ⭐ Get premium: /subscribe
-  `);
+  `, { parse_mode: 'Markdown' });
 });
 
 // Cleanup expired subscriptions every hour
