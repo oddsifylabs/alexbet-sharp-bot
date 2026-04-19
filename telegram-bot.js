@@ -822,9 +822,13 @@ bot.onText(/\/export_csv/, (msg) => {
     // Create CSV
     const result = exportToCSV(gems, userId);
     
-    // Send the actual file to Telegram
-    bot.sendDocument(chatId, result.filepath, {
-      caption: `📊 CSV Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`
+    // Send the actual file to Telegram using fs.createReadStream
+    const fs = require('fs');
+    const fileStream = fs.createReadStream(result.filepath);
+    
+    bot.sendDocument(chatId, fileStream, {
+      caption: `📊 CSV Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported`,
+      filename: result.filename
     }, (err) => {
       if (err) {
         logger.error('Failed to send CSV file', { userId, error: err.message });
@@ -871,9 +875,13 @@ bot.onText(/\/export_txt/, (msg) => {
     // Create TXT
     const result = exportToTXT(gems, userId);
     
-    // Send the actual file to Telegram
-    bot.sendDocument(chatId, result.filepath, {
-      caption: `📋 TXT Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`
+    // Send the actual file to Telegram using fs.createReadStream
+    const fs = require('fs');
+    const fileStream = fs.createReadStream(result.filepath);
+    
+    bot.sendDocument(chatId, fileStream, {
+      caption: `📋 TXT Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported`,
+      filename: result.filename
     }, (err) => {
       if (err) {
         logger.error('Failed to send TXT file', { userId, error: err.message });
@@ -918,9 +926,13 @@ bot.onText(/\/export_json/, (msg) => {
     // Create JSON
     const result = exportToJSON(gems, userId);
     
-    // Send the actual file to Telegram
-    bot.sendDocument(chatId, result.filepath, {
-      caption: `📄 JSON Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported (with metadata)`
+    // Send the actual file to Telegram using fs.createReadStream
+    const fs = require('fs');
+    const fileStream = fs.createReadStream(result.filepath);
+    
+    bot.sendDocument(chatId, fileStream, {
+      caption: `📄 JSON Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported (with metadata)`,
+      filename: result.filename
     }, (err) => {
       if (err) {
         logger.error('Failed to send JSON file', { userId, error: err.message });
