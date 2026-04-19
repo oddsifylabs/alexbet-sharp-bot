@@ -1,3 +1,0 @@
-rank,sport,market,pick,odds,edge_percent,ev_percent,implied_probability,kelly_percent,kelly_stake,conservative_2pct,best_book,books_compared
-1,NFL,Moneyline,Kansas City Chiefs ML,-110,5.25,4.77,N/A,0.03,2.5,N/A,N/A,5
-2,NBA,Spread,Boston Celtics -5.5,-105,3.75,3.57,N/A,0.02,1.8,N/A,N/A,5
