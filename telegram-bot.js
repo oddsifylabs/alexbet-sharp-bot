@@ -8,9 +8,29 @@ const RateLimiter = require('./src/services/rateLimiter');
 const logger = require('./src/utils/logger');
 const { validateBankroll, validateTimezone, parseAPIResponse } = require('./src/utils/validation');
 const { exportToCSV, exportToTXT, exportToJSON, getAvailableExports } = require('./src/utils/export-handler');
+const supabaseClient = require('./src/services/supabase-client');
+const { registerPaymentHandlers } = require('./src/services/telegram-stars-payment');
+const cron = require('node-cron');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
+
+// Initialize Supabase and payment handlers
+(async () => {
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      await supabaseClient.initializeTables();
+      console.log('✅ Supabase initialized');
+    } catch (err) {
+      console.warn('⚠️ Supabase initialization warning:', err.message);
+    }
+  } else {
+    console.warn('⚠️ Supabase not configured - subscriptions will not persist');
+  }
+})();
+
+// Initialize payment handlers (registers /subscribe command and payment webhooks)
+registerPaymentHandlers(bot);
 
 // Set bot commands for autocomplete menu when user types /
 // Wrapped in try-catch to prevent crash if Telegram API has issues
@@ -22,6 +42,7 @@ try {
     { command: 'export', description: 'Export bets (CSV, JSON, PDF)' },
     { command: 'timezone', description: 'Set your US timezone' },
     { command: 'subscribe', description: 'Upgrade to paid tier' },
+    { command: 'status', description: 'Check your subscription status' },
     { command: 'lite', description: 'Go to ALexBET Lite tracker' },
     { command: 'help', description: 'Show all commands' }
   ]).catch(err => {
@@ -915,36 +936,57 @@ bot.on('callback_query', (q) => {
 
 // /help command
 // Export feature - CSV, JSON, PDF
-bot.onText(/\/export/, (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-
-  // Check if user has recent scan
-  const userScans = userLatestScans[userId];
-  if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-    bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export the results.`);
-    return;
-  }
-
-  const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_csv - Download as CSV (Excel)\n/export_txt - Download as TXT (readable)\n/export_json - Download as JSON (backup)`;
-  bot.sendMessage(chatId, message);
-});
-
-// CSV export
-bot.onText(/\/export_csv/, (msg) => {
+bot.onText(/\/export/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
   try {
+    // Ensure user exists in database
+    await supabaseClient.upsertUser(userId, msg.from.username || `user_${userId}`);
+    
+    // Check subscription
+    const isActive = await supabaseClient.isSubscriptionActive(userId);
+    
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export the results.`);
       return;
     }
 
+    const message = `📊 Export Your Latest Scan\\n\\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\\n\\nChoose format:\\n\\n/export_csv - Download as CSV (Excel)\\n/export_txt - Download as TXT (readable)\\n/export_json - Download as JSON (backup)`;
+    bot.sendMessage(chatId, message);
+  } catch (err) {
+    logger.error('Error in /export:', err);
+    bot.sendMessage(chatId, '❌ Error preparing export. Please try again.');
+  }
+});
+
+// CSV export
+bot.onText(/\/export_csv/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    // Check subscription and enforce limit
+    const isActive = await supabaseClient.isSubscriptionActive(userId);
+    const maxGems = isActive ? 9999 : 3; // Free tier: 3 gems max
+    
+    // Check if user has recent scan
+    const userScans = userLatestScans[userId];
+    if (!userScans || !userScans.gems || userScans.gems.length === 0) {
+      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export.`);
+      return;
+    }
+
+    // Apply gem limit
+    let gemsToExport = userScans.gems.slice(0, maxGems);
+    if (userScans.gems.length > maxGems && !isActive) {
+      bot.sendMessage(chatId, `⚠️ Free tier limited to ${maxGems} gems. /subscribe for unlimited export`);
+    }
+
     // Convert gems to export format
-    const gems = userScans.gems.map(gem => ({
+    const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
       pick: gem.pick || 'N/A',
@@ -965,7 +1007,7 @@ bot.onText(/\/export_csv/, (msg) => {
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📊 CSV Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported`,
+      caption: `📊 CSV Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`,
       filename: result.filename
     }, (err) => {
       if (err) {
@@ -982,20 +1024,30 @@ bot.onText(/\/export_csv/, (msg) => {
 });
 
 // TXT export
-bot.onText(/\/export_txt/, (msg) => {
+bot.onText(/\/export_txt/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
   try {
+    // Check subscription and enforce limit
+    const isActive = await supabaseClient.isSubscriptionActive(userId);
+    const maxGems = isActive ? 9999 : 3; // Free tier: 3 gems max
+    
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export.`);
       return;
     }
 
+    // Apply gem limit
+    let gemsToExport = userScans.gems.slice(0, maxGems);
+    if (userScans.gems.length > maxGems && !isActive) {
+      bot.sendMessage(chatId, `⚠️ Free tier limited to ${maxGems} gems. /subscribe for unlimited export`);
+    }
+
     // Convert gems to export format
-    const gems = userScans.gems.map(gem => ({
+    const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
       pick: gem.pick || 'N/A',
@@ -1018,7 +1070,7 @@ bot.onText(/\/export_txt/, (msg) => {
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📋 TXT Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported`,
+      caption: `📋 TXT Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`,
       filename: result.filename
     }, (err) => {
       if (err) {
@@ -1035,20 +1087,30 @@ bot.onText(/\/export_txt/, (msg) => {
 });
 
 // JSON export
-bot.onText(/\/export_json/, (msg) => {
+bot.onText(/\/export_json/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
   try {
+    // Check subscription and enforce limit
+    const isActive = await supabaseClient.isSubscriptionActive(userId);
+    const maxGems = isActive ? 9999 : 3; // Free tier: 3 gems max
+    
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export.`);
       return;
     }
 
+    // Apply gem limit
+    let gemsToExport = userScans.gems.slice(0, maxGems);
+    if (userScans.gems.length > maxGems && !isActive) {
+      bot.sendMessage(chatId, `⚠️ Free tier limited to ${maxGems} gems. /subscribe for unlimited export`);
+    }
+
     // Convert gems to export format
-    const gems = userScans.gems.map(gem => ({
+    const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
       pick: gem.pick || 'N/A',
@@ -1069,7 +1131,7 @@ bot.onText(/\/export_json/, (msg) => {
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📄 JSON Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported (with metadata)`,
+      caption: `📄 JSON Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported (with metadata)`,
       filename: result.filename
     }, (err) => {
       if (err) {
@@ -1085,42 +1147,56 @@ bot.onText(/\/export_json/, (msg) => {
   }
 });
 
-// /subscribe command - Show Whop products
-bot.onText(/\/subscribe/, (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: '📖 Ebook ($9.99)', url: 'https://whop.com/oddsify-shop' },
-        { text: '🤖 Bot Premium ($99.99)', url: 'https://whop.com/oddsify-shop' }
-      ],
-      [
-        { text: 'ℹ️ Learn More', callback_data: 'learn_more' }
-      ]
-    ]
-  };
-  
-  bot.sendMessage(chatId, `
-⭐ AlexBET Premium Options
+// /subscribe command - Now handled by telegram-stars-payment.js
+// The registerPaymentHandlers() call above automatically registers this command
+// showing 3 pricing tiers: Monthly ($9.99), Yearly ($99.99), Lifetime ($999)
 
-📖 AlexBET Sharp Betting Guide
-Price: $9.99 (one-time)
-✅ All 4 formats (PDF, EPUB, HTML, TXT)
-✅ 50+ pages of education
-✅ Instant delivery
-✅ Lifetime access
-
-🤖 AlexBET Bot Premium (1 Year)
-Price: $99.99/year
-✅ Full bot access for 1 year
-✅ Real-time gem scanning
-✅ All features included
-✅ Priority support
-
-Click button to purchase:
-  `, { reply_markup: keyboard });
+// /status command - Show current subscription status
+bot.onText(/\/status/, async (msg) => {
+  try {
+    const userId = msg.from.id;
+    const chatId = msg.chat.id;
+    
+    const user = await supabaseClient.getUser(userId);
+    
+    if (!user) {
+      return bot.sendMessage(chatId, '❌ User not found. Try running /start first.');
+    }
+    
+    let statusMsg = '📊 **Your Subscription Status**\n\n';
+    
+    if (user.subscription_tier === 'free' || !user.subscription_tier) {
+      statusMsg += '**Status:** 🆓 Free Tier\n';
+      statusMsg += '**Features:** Limited to 3 gems per export\n\n';
+      statusMsg += '_Ready to upgrade?_\n/subscribe';
+    } else if (user.subscription_tier === 'lifetime') {
+      statusMsg += '**Status:** 👑 Lifetime Premium\n';
+      statusMsg += '**Expires:** Never\n';
+      statusMsg += '**Features:** Unlimited access\n\n';
+      statusMsg += '✅ Thank you for your support!';
+    } else {
+      const expiryDate = new Date(user.subscription_expiry);
+      const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+      
+      statusMsg += `**Status:** ✅ ${user.subscription_tier.toUpperCase()} Premium\n`;
+      statusMsg += `**Expires:** ${expiryDate.toLocaleDateString()}\n`;
+      statusMsg += `**Days Left:** ${daysLeft > 0 ? daysLeft : 'Expired'}\n`;
+      statusMsg += '**Features:** Unlimited access\n\n';
+      
+      if (daysLeft <= 7 && daysLeft > 0) {
+        statusMsg += '⏰ _Renewal coming soon!_\n/subscribe to extend';
+      } else if (daysLeft <= 0) {
+        statusMsg += '❌ _Subscription expired_\n/subscribe to renew';
+      } else {
+        statusMsg += 'Enjoy your premium access!';
+      }
+    }
+    
+    await bot.sendMessage(chatId, statusMsg, { parse_mode: 'Markdown' });
+  } catch (err) {
+    logger.error('Error in /status command:', err);
+    bot.sendMessage(msg.chat.id, '❌ Error checking status. Please try again.');
+  }
 });
 
 // Handle callback queries
@@ -1290,11 +1366,23 @@ bot.onText(/\/help/, (msg) => {
   `);
 });
 
+// Cleanup expired subscriptions every hour
+cron.schedule('0 * * * *', async () => {
+  try {
+    const result = await supabaseClient.cleanupExpiredSubscriptions();
+    if (result && result.deletedCount > 0) {
+      logger.info(`🧹 Cleanup: Expired ${result.deletedCount} subscriptions`);
+    }
+  } catch (err) {
+    logger.error('Cleanup job failed:', err.message);
+  }
+});
+
 // Error handling
 bot.on('polling_error', (err) => {
   console.error('[POLLING_ERROR]', err.message);
 });
 
-console.log('✅ Bot running with Whop payments integrated...');
+console.log('✅ Bot running with Telegram Stars payments integrated...');
 console.log('📍 Subscribe: /subscribe');
-console.log('🛒 Whop store ready for payments');
+console.log('🛒 Telegram Stars ready for payments');
