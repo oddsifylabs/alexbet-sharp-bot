@@ -352,7 +352,8 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                       console.log(`[GEM CALC] ${game.away_team} vs ${game.home_team} | ${outcome.name}: EV=${ev.toFixed(6)} Edge=${edge.toFixed(3)}% Books=${books} Valid=${isValid}`);
                     }
 
-                    if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.0001) return;
+                    // Quality threshold: 2% EV minimum (eliminate noise, focus on real opportunities)
+                    if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.02) return;
 
                     const kelly = calculateKellyStake(bankroll, consensusProb, bestPrice);  // ✅ Changed: use consensusProb
                     const conservative1pct = Math.floor(bankroll * 0.01);
