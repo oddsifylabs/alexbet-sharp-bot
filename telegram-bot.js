@@ -722,9 +722,12 @@ bot.on('message', async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   
+  console.log(`[MESSAGE] Received from ${userId}: "${msg.text}" (type: ${typeof msg.text})`);
+  
   // Skip bankroll handling if this is a command (starts with /)
   // Commands like /scan, /stats, etc. should be handled by their own handlers
   if (msg.text && msg.text.startsWith('/')) {
+    console.log(`[MESSAGE SKIP] Skipping bankroll for command: ${msg.text}`);
     // Also clear awaiting_bankroll state when a command is issued
     if (userBankrolls[userId] === 'awaiting_bankroll') {
       userBankrolls[userId] = 100; // Reset to default
