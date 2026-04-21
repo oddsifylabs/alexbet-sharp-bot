@@ -1428,46 +1428,52 @@ bot.on('callback_query', async (query) => {
   
   console.log(`[CALLBACK] Received: ${data} from user ${userId}`);
   
-  // ========== TIMEZONE CALLBACKS (tz_*) ==========
-  if (data.startsWith('tz_')) {
-    const tzMap = { 
-      'tz_est': 'America/New_York', 
-      'tz_cst': 'America/Chicago', 
-      'tz_mst': 'America/Denver', 
-      'tz_pst': 'America/Los_Angeles', 
-      'tz_akst': 'America/Anchorage', 
-      'tz_hst': 'Pacific/Honolulu' 
-    };
-    const tzNames = {
-      'tz_est': 'EST (New York)',
-      'tz_cst': 'CST (Chicago)',
-      'tz_mst': 'MST (Denver)',
-      'tz_pst': 'PST (Los Angeles)',
-      'tz_akst': 'AKST (Alaska)',
-      'tz_hst': 'HST (Hawaii)'
-    };
-    
-    if (tzMap[data]) {
-      userTimezones[userId] = tzMap[data];
-      console.log(`[TZ] Set timezone for ${userId}: ${tzMap[data]}`);
+  try {
+    // ========== TIMEZONE CALLBACKS (tz_*) ==========
+    if (data && data.startsWith('tz_')) {
+      console.log(`[TZ MATCH] Processing timezone: ${data}`);
       
-      try {
-        await supabaseClient.upsertUser(userId, query.from.username || `user_${userId}`);
-        await supabaseClient.supabase
-          .from('users')
-          .update({ timezone: tzMap[data], updated_at: new Date() })
-          .eq('telegram_id', userId);
+      const tzMap = { 
+        'tz_est': 'America/New_York', 
+        'tz_cst': 'America/Chicago', 
+        'tz_mst': 'America/Denver', 
+        'tz_pst': 'America/Los_Angeles', 
+        'tz_akst': 'America/Anchorage', 
+        'tz_hst': 'Pacific/Honolulu' 
+      };
+      const tzNames = {
+        'tz_est': 'EST (New York)',
+        'tz_cst': 'CST (Chicago)',
+        'tz_mst': 'MST (Denver)',
+        'tz_pst': 'PST (Los Angeles)',
+        'tz_akst': 'AKST (Alaska)',
+        'tz_hst': 'HST (Hawaii)'
+      };
+      
+      if (tzMap[data]) {
+        console.log(`[TZ SET] ${userId} -> ${tzMap[data]}`);
+        userTimezones[userId] = tzMap[data];
         
+        // Always answer immediately
         bot.answerCallbackQuery(query.id, `✅ ${tzNames[data]} set!`);
-        bot.sendMessage(chatId, `✅ Timezone Updated\n\nYou're set to: **${tzNames[data]}**\n\nGame times will display in your timezone when you run /scan`, { parse_mode: 'Markdown' });
-      } catch (err) {
-        console.error(`[TZ ERROR] ${err.message}`);
-        bot.answerCallbackQuery(query.id, `✅ ${tzNames[data]} set!`);
+        
+        // Send confirmation message
         bot.sendMessage(chatId, `✅ Timezone set to ${tzNames[data]}`);
+        
+        // Try to save to DB but don't block on it
+        try {
+          await supabaseClient.upsertUser(userId, query.from.username || `user_${userId}`);
+          await supabaseClient.supabase
+            .from('users')
+            .update({ timezone: tzMap[data], updated_at: new Date() })
+            .eq('telegram_id', userId);
+          console.log(`[TZ SAVED] ${userId} timezone saved to DB`);
+        } catch (dbErr) {
+          console.log(`[TZ DB ERROR] ${dbErr.message}`);
+        }
       }
+      return;
     }
-    return;
-  }
   
   // ========== BANKROLL CALLBACKS (bankroll_*) ==========
   const bankrollMatch = data.match(/^bankroll_(\d+|custom)$/);
@@ -1543,9 +1549,13 @@ Ready? /subscribe to purchase!
     return;
   }
   
-  // Unknown callback
-  console.log(`[UNKNOWN CALLBACK] ${data}`);
-  bot.answerCallbackQuery(query.id);
+    // Unknown callback
+    console.log(`[UNKNOWN CALLBACK] ${data}`);
+    bot.answerCallbackQuery(query.id);
+  } catch (err) {
+    console.error(`[CALLBACK ERROR] ${err.message}`);
+    bot.answerCallbackQuery(query.id, { text: '❌ Error processing action', show_alert: true });
+  }
 });
 
 // /timezone command (USA only)
