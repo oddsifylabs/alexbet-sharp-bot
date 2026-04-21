@@ -435,6 +435,12 @@ bot.onText(/\/start/, async (msg) => {
   
   logger.info('User initiated /start command', { userId, userName, chatId, isAdmin: isAdmin(userId) });
   
+  // Clear any lingering awaiting state
+  if (userBankrolls[userId] === 'awaiting_bankroll' || userBankrolls[userId] === 'awaiting_bankroll_update') {
+    userBankrolls[userId] = 100; // Reset to default
+    logger.debug('Cleared lingering bankroll state', { userId });
+  }
+  
   // Load existing timezone and bankroll from database if available
   try {
     const { data: user } = await supabaseClient.getUser(userId);
@@ -1803,6 +1809,11 @@ bot.onText(/\/status/, async (msg) => {
 
 // Handle callback queries
 bot.on('callback_query', (query) => {
+  // Skip timezone callbacks - handled elsewhere
+  if (query.data && query.data.startsWith('tz_')) {
+    return;
+  }
+  
   if (query.data === 'whop_learn_more') {
     bot.sendMessage(query.message.chat.id, `
 📚 What's Included?
