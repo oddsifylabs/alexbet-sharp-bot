@@ -526,15 +526,18 @@ bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
   
-  // CRITICAL: Skip timezone callbacks - let the unified handler (at line 1427) process them
-  // This prevents the first handler from intercepting timezone selections
+  console.log(`[HANDLER 1] Callback: ${data}`);
+  
+  // CRITICAL: Skip timezone callbacks - let unified handler process them
   if (data && data.startsWith('tz_')) {
-    console.log(`[CALLBACK SKIP] First handler passing through tz_ callback: ${data}`);
+    console.log(`[HANDLER 1] Timezone callback detected, skipping...`);
     return;
   }
   
+  console.log(`[HANDLER 1] Non-timezone callback, processing...`);
+  
   // Handle bankroll quick select buttons
-  const bankrollMatch = data.match(/^bankroll_(\\d+|custom)$/);
+  const bankrollMatch = data.match(/^bankroll_(\d+|custom)$/);
   if (bankrollMatch) {
     if (query.data === 'bankroll_custom') {
       bot.sendMessage(chatId, '💰 Please enter your custom bankroll amount (minimum $1):');
@@ -1435,17 +1438,17 @@ bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
   
-  console.log(`\n[CALLBACK HANDLER] ========================================`);
-  console.log(`[CALLBACK HANDLER] Callback received!`);
-  console.log(`[CALLBACK HANDLER] User ID: ${userId}`);
-  console.log(`[CALLBACK HANDLER] Chat ID: ${chatId}`);
-  console.log(`[CALLBACK HANDLER] Data: ${data}`);
-  console.log(`[CALLBACK HANDLER] ========================================\n`);
+  console.log(`\n[HANDLER 2] ========================================`);
+  console.log(`[HANDLER 2] Callback received!`);
+  console.log(`[HANDLER 2] User ID: ${userId}`);
+  console.log(`[HANDLER 2] Chat ID: ${chatId}`);
+  console.log(`[HANDLER 2] Data: ${data}`);
+  console.log(`[HANDLER 2] ========================================\n`);
   
   try {
     // ========== TIMEZONE CALLBACKS (tz_*) ==========
     if (data && data.startsWith('tz_')) {
-      console.log(`[TZ CALLBACK] ✅ TIMEZONE CALLBACK MATCHED: ${data}`);
+      console.log(`[HANDLER 2] ✅ TIMEZONE CALLBACK MATCHED: ${data}`);
       
       try {
         console.log(`[TZ] About to answer callback query...`);
