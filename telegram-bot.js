@@ -32,6 +32,14 @@ const bot = new TelegramBot(token, { polling: true });
 // Initialize payment handlers (registers /subscribe command and payment webhooks)
 registerPaymentHandlers(bot);
 
+// ✅ Admin list - these users bypass all restrictions
+const ADMIN_IDS = [8502906149]; // Jesse Collins
+
+// Helper function to check if user is admin
+function isAdmin(userId) {
+  return ADMIN_IDS.includes(userId);
+}
+
 // Set bot commands for autocomplete menu when user types /
 // Wrapped in try-catch to prevent crash if Telegram API has issues
 try {
@@ -747,24 +755,29 @@ bot.onText(/\/scan/, async (msg) => {
   const timezone = userTimezones[userId] || 'America/New_York';
   
   // Check user subscription tier
-  let subscription = { tier: 'free', gems: 3, allowedMarkets: ['moneyline'] };
-  try {
-    const subDetails = await getSubscriptionDetails(userId);
-    const tierConfig = {
-      'free': { gems: 3, allowedMarkets: ['moneyline'] },
-      'monthly': { gems: 10, allowedMarkets: ['moneyline', 'totals'] },
-      'monthly_plus': { gems: 30, allowedMarkets: ['moneyline', 'spreads', 'totals'] },
-      'yearly': { gems: 20, allowedMarkets: ['moneyline', 'spreads', 'totals'] },
-      'lifetime': { gems: 9999, allowedMarkets: ['moneyline', 'spreads', 'totals'] }
-    };
-    subscription = {
-      tier: subDetails.tier || 'free',
-      gems: tierConfig[subDetails.tier]?.gems || 3,
-      allowedMarkets: tierConfig[subDetails.tier]?.allowedMarkets || ['moneyline']
-    };
-  } catch (err) {
-    logger.warn('Failed to fetch subscription status, using free tier', { userId, error: err.message });
+  let subscription = { tier: 'admin', gems: 9999, allowedMarkets: ['moneyline', 'spreads', 'totals'] };
+  
+  // Admins bypass subscription checks
+  if (!isAdmin(userId)) {
     subscription = { tier: 'free', gems: 3, allowedMarkets: ['moneyline'] };
+    try {
+      const subDetails = await getSubscriptionDetails(userId);
+      const tierConfig = {
+        'free': { gems: 3, allowedMarkets: ['moneyline'] },
+        'monthly': { gems: 10, allowedMarkets: ['moneyline', 'totals'] },
+        'monthly_plus': { gems: 30, allowedMarkets: ['moneyline', 'spreads', 'totals'] },
+        'yearly': { gems: 20, allowedMarkets: ['moneyline', 'spreads', 'totals'] },
+        'lifetime': { gems: 9999, allowedMarkets: ['moneyline', 'spreads', 'totals'] }
+      };
+      subscription = {
+        tier: subDetails.tier || 'free',
+        gems: tierConfig[subDetails.tier]?.gems || 3,
+        allowedMarkets: tierConfig[subDetails.tier]?.allowedMarkets || ['moneyline']
+      };
+    } catch (err) {
+      logger.warn('Failed to fetch subscription status, using free tier', { userId, error: err.message });
+      subscription = { tier: 'free', gems: 3, allowedMarkets: ['moneyline'] };
+    }
   }
   
   logger.debug('Scan parameters loaded', { userId, bankroll, timezone, subscription: subscription.tier, maxGems: subscription.gems, allowedMarkets: subscription.allowedMarkets });
@@ -1351,11 +1364,14 @@ bot.onText(/\/export/, async (msg) => {
   const userId = msg.from.id;
 
   try {
-    const subscription = await getSubscriptionDetails(userId);
-    
-    if (!subscription.export) {
-      bot.sendMessage(chatId, `❌ Export feature is premium only.\n\n/subscribe to unlock:\n  • Unlimited gems\n  • CSV/JSON/PDF export\n  • Full market access (Spreads, Totals)\n  • Advanced statistics`);
-      return;
+    // Admins bypass subscription check
+    if (!isAdmin(userId)) {
+      const subscription = await getSubscriptionDetails(userId);
+      
+      if (!subscription.export) {
+        bot.sendMessage(chatId, `❌ Export feature is premium only.\n\n/subscribe to unlock:\n  • Unlimited gems\n  • CSV/JSON/PDF export\n  • Full market access (Spreads, Totals)\n  • Advanced statistics`);
+        return;
+      }
     }
     
     // Ensure user exists in database
@@ -1382,11 +1398,13 @@ bot.onText(/\/export_csv/, async (msg) => {
   const userId = msg.from.id;
 
   try {
-    // Check subscription
-    const subscription = await getSubscriptionDetails(userId);
-    if (!subscription.export) {
-      bot.sendMessage(chatId, `❌ CSV export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
-      return;
+    // Check subscription (admins bypass)
+    if (!isAdmin(userId)) {
+      const subscription = await getSubscriptionDetails(userId);
+      if (!subscription.export) {
+        bot.sendMessage(chatId, `❌ CSV export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
+        return;
+      }
     }
     
     // Check if user has recent scan
@@ -1396,11 +1414,19 @@ bot.onText(/\/export_csv/, async (msg) => {
       return;
     }
 
-    // Apply gem limit based on subscription tier
-    const maxGems = subscription.gems || 10;
+    // Apply gem limit (admins get all gems)
+    let maxGems = 10;
+    if (isAdmin(userId)) {
+      maxGems = 9999; // Admins get unlimited
+    } else {
+      const subscription = await getSubscriptionDetails(userId);
+      maxGems = subscription.gems || 10;
+    }
+    
     let gemsToExport = userScans.gems.slice(0, maxGems);
-    if (userScans.gems.length > maxGems) {
-      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} gems. Upgrade for more.`);
+    if (userScans.gems.length > maxGems && !isAdmin(userId)) {
+      const subscription = await getSubscriptionDetails(userId);
+      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} gems. /subscribe for more`);
     }
 
     // Convert gems to export format
@@ -1447,11 +1473,13 @@ bot.onText(/\/export_txt/, async (msg) => {
   const userId = msg.from.id;
 
   try {
-    // Check subscription
-    const subscription = await getSubscriptionDetails(userId);
-    if (!subscription.export) {
-      bot.sendMessage(chatId, `❌ Text export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
-      return;
+    // Check subscription (admins bypass)
+    if (!isAdmin(userId)) {
+      const subscription = await getSubscriptionDetails(userId);
+      if (!subscription.export) {
+        bot.sendMessage(chatId, `❌ Text export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
+        return;
+      }
     }
     
     // Check if user has recent scan
@@ -1461,10 +1489,18 @@ bot.onText(/\/export_txt/, async (msg) => {
       return;
     }
 
-    // Apply gem limit
-    const maxGems = subscription.gems || 10;
+    // Apply gem limit (admins get all gems)
+    let maxGems = 10;
+    if (isAdmin(userId)) {
+      maxGems = 9999; // Admins get unlimited
+    } else {
+      const subscription = await getSubscriptionDetails(userId);
+      maxGems = subscription.gems || 10;
+    }
+    
     let gemsToExport = userScans.gems.slice(0, maxGems);
-    if (userScans.gems.length > maxGems) {
+    if (userScans.gems.length > maxGems && !isAdmin(userId)) {
+      const subscription = await getSubscriptionDetails(userId);
       bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} gems. /subscribe for more`);
     }
 
@@ -1514,11 +1550,13 @@ bot.onText(/\/export_json/, async (msg) => {
   const userId = msg.from.id;
 
   try {
-    // Check subscription
-    const subscription = await getSubscriptionDetails(userId);
-    if (!subscription.export) {
-      bot.sendMessage(chatId, `❌ JSON export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
-      return;
+    // Check subscription (admins bypass)
+    if (!isAdmin(userId)) {
+      const subscription = await getSubscriptionDetails(userId);
+      if (!subscription.export) {
+        bot.sendMessage(chatId, `❌ JSON export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
+        return;
+      }
     }
     
     // Check if user has recent scan
@@ -1528,10 +1566,18 @@ bot.onText(/\/export_json/, async (msg) => {
       return;
     }
 
-    // Apply gem limit
-    const maxGems = subscription.gems || 10;
+    // Apply gem limit (admins get all gems)
+    let maxGems = 10;
+    if (isAdmin(userId)) {
+      maxGems = 9999; // Admins get unlimited
+    } else {
+      const subscription = await getSubscriptionDetails(userId);
+      maxGems = subscription.gems || 10;
+    }
+    
     let gemsToExport = userScans.gems.slice(0, maxGems);
-    if (userScans.gems.length > maxGems) {
+    if (userScans.gems.length > maxGems && !isAdmin(userId)) {
+      const subscription = await getSubscriptionDetails(userId);
       bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} gems. /subscribe for more`);
     }
 
