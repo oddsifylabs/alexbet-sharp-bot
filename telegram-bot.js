@@ -376,7 +376,7 @@ bot.onText(/\/start/, async (msg) => {
   const userId = msg.from.id;
   const userName = msg.from.username || 'anonymous';
   
-  logger.info('User initiated /start command', { userId, userName, chatId });
+  logger.info('User initiated /start command', { userId, userName, chatId, isAdmin: isAdmin(userId) });
   
   // Load existing timezone and bankroll from database if available
   try {
@@ -737,7 +737,7 @@ bot.onText(/\/scan/, async (msg) => {
   const userId = msg.from.id;
   const userName = msg.from.username || 'anonymous';
   
-  logger.info('User initiated /scan command', { userId, userName, chatId });
+  logger.info('User initiated /scan command', { userId, userName, chatId, isAdmin: isAdmin(userId) });
   
   // CHECK RATE LIMIT FIRST
   const rateLimitStatus = scanLimiter.isRateLimited(userId);
@@ -779,7 +779,7 @@ bot.onText(/\/scan/, async (msg) => {
     }
   }
   
-  logger.debug('Scan parameters loaded', { userId, bankroll, timezone, subscription: subscription.tier, maxGems: subscription.gems, allowedMarkets: subscription.allowedMarkets });
+  logger.info('Scan parameters loaded', { userId, bankroll, timezone, subscription: subscription.tier, maxGems: subscription.gems, allowedMarkets: subscription.allowedMarkets });
   
   bot.sendMessage(chatId, '🔄 Fetching live odds + Claude AI analysis...');
   const scanStartTime = Date.now();
