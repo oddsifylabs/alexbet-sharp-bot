@@ -1435,17 +1435,23 @@ bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
   
-  console.log(`[CALLBACK] Received: ${data} from user ${userId}`);
+  console.log(`\n[CALLBACK HANDLER] ========================================`);
+  console.log(`[CALLBACK HANDLER] Callback received!`);
+  console.log(`[CALLBACK HANDLER] User ID: ${userId}`);
+  console.log(`[CALLBACK HANDLER] Chat ID: ${chatId}`);
+  console.log(`[CALLBACK HANDLER] Data: ${data}`);
+  console.log(`[CALLBACK HANDLER] ========================================\n`);
   
   try {
     // ========== TIMEZONE CALLBACKS (tz_*) ==========
     if (data && data.startsWith('tz_')) {
-      console.log(`[TZ MATCH] Processing timezone: ${data}`);
+      console.log(`[TZ CALLBACK] ✅ TIMEZONE CALLBACK MATCHED: ${data}`);
       
       try {
+        console.log(`[TZ] About to answer callback query...`);
         // Answer immediately with loading indicator
         await bot.answerCallbackQuery(query.id, '⏳ Setting timezone...', false);
-        console.log(`[TZ] Answered callback query`);
+        console.log(`[TZ] ✅ Answered callback query`);
         
         // Send confirmation message  
         const tzName = data === 'tz_mst' ? 'MST (Denver)' : 
@@ -1455,11 +1461,17 @@ bot.on('callback_query', async (query) => {
                        data === 'tz_akst' ? 'AKST (Alaska)' :
                        data === 'tz_hst' ? 'HST (Hawaii)' : data;
         
-        await bot.sendMessage(chatId, `✅ Timezone set to ${tzName}`);
-        console.log(`[TZ] Sent confirmation message`);
+        console.log(`[TZ] About to send confirmation message to ${chatId}: ${tzName}`);
+        await bot.sendMessage(chatId, `✅ **Timezone Set**\n\nYou are now using: **${tzName}**`);
+        console.log(`[TZ] ✅ Sent confirmation message`);
       } catch (err) {
-        console.error(`[TZ ERROR] ${err.message}`);
-        bot.answerCallbackQuery(query.id, '❌ Error setting timezone', true);
+        console.error(`[TZ ERROR] Exception caught: ${err.message}`);
+        console.error(`[TZ ERROR] Stack: ${err.stack}`);
+        try {
+          bot.answerCallbackQuery(query.id, '❌ Error: ' + err.message, true);
+        } catch (e) {
+          console.error(`[TZ ERROR] Failed to answer callback: ${e.message}`);
+        }
       }
       return;
     }
