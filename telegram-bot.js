@@ -1494,8 +1494,8 @@ For issues, email: support@oddsifylabs.com
 
 Common Issues:
 
-❓ Didn't receive my ebook?
-Check /downloads or email support
+❓ Didn't receive resources?
+Email support@oddsifylabs.com
 
 ❓ Bot features not working?
 Try /help or restart the bot
