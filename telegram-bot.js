@@ -820,19 +820,19 @@ bot.onText(/\/scan/, async (msg) => {
   const timezone = userTimezones[userId] || 'America/New_York';
   
   // Check user subscription tier
-  let subscription = { tier: 'admin', gems: 9999, allowedMarkets: ['moneyline', 'spreads', 'totals'] };
+  let subscription = { tier: 'admin', gems: 9999, allowedMarkets: ['ML', 'Spread', 'Total'] };
   
   // Admins bypass subscription checks
   if (!isAdmin(userId)) {
-    subscription = { tier: 'free', gems: 3, allowedMarkets: ['moneyline'] };
+    subscription = { tier: 'free', gems: 3, allowedMarkets: ['ML'] };
     try {
       const subDetails = await getSubscriptionDetails(userId);
       const tierConfig = {
-        'free': { gems: 3, allowedMarkets: ['moneyline'] },
-        'monthly': { gems: 10, allowedMarkets: ['moneyline', 'totals'] },
-        'monthly_plus': { gems: 30, allowedMarkets: ['moneyline', 'spreads', 'totals'] },
-        'yearly': { gems: 20, allowedMarkets: ['moneyline', 'spreads', 'totals'] },
-        'lifetime': { gems: 9999, allowedMarkets: ['moneyline', 'spreads', 'totals'] }
+        'free': { gems: 3, allowedMarkets: ['ML'] },
+        'monthly': { gems: 10, allowedMarkets: ['ML', 'Total'] },
+        'monthly_plus': { gems: 30, allowedMarkets: ['ML', 'Spread', 'Total'] },
+        'yearly': { gems: 20, allowedMarkets: ['ML', 'Spread', 'Total'] },
+        'lifetime': { gems: 9999, allowedMarkets: ['ML', 'Spread', 'Total'] }
       };
       subscription = {
         tier: subDetails.tier || 'free',
