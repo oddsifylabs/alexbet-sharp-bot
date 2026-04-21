@@ -305,6 +305,14 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                     });
                   });
 
+                  // DEBUG: Log outcome map size
+                  if (outcomeMap.size > 0 && allGems.length === 0) {
+                    console.log(`[GEM DEBUG] ${game.away_team} vs ${game.home_team} (${market}): Found ${outcomeMap.size} outcomes`);
+                    outcomeMap.forEach((data, key) => {
+                      console.log(`  Outcome: ${key}, Books: ${data.books}, BestPrice: ${data.bestPrice}, Probs: ${data.impliedProbs.length}`);
+                    });
+                  }
+
                   // ✅ FIX: Calculate edge using market consensus (no vig normalization)
                   outcomeMap.forEach(({ outcome, impliedProbs, bestPrice, bestBook, books }) => {
                     if (!impliedProbs.length || bestPrice == null || books < 2) return;
@@ -322,10 +330,10 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                     const ev = (consensusProb * decimalOdds) - 1;
 
                     // DEBUG LOGGING
-                    const isValid = Number.isFinite(ev) && Number.isFinite(edge) && ev > 0.01;
-                    if (!isValid && allGems.length === 0) {
-                      // Log first few rejections to debug
-                      console.log(`[GEM FILTER REJECT] ${sport} ${market} ${outcome.name}: ev=${ev.toFixed(4)} edge=${edge.toFixed(2)}% valid=${isValid}`);
+                    const isValid = Number.isFinite(ev) && Number.isFinite(edge) && ev > 0.0001;
+                    if (allGems.length < 5) {
+                      // Log first 5 outcomes for debugging
+                      console.log(`[GEM CALC] ${game.away_team} vs ${game.home_team} | ${outcome.name}: EV=${ev.toFixed(6)} Edge=${edge.toFixed(3)}% Books=${books} Valid=${isValid}`);
                     }
 
                     if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.0001) return;
