@@ -852,6 +852,7 @@ bot.onText(/\/scan/, async (msg) => {
       // Analyze top 10 games with Haiku → Sonnet → Opus pipeline
       for (const gem of gems.slice(0, 10)) {
         try {
+          const isPremium = subscription.tier !== 'free';
           const analysis = await claudeOptimizer.analyzeGame(gem, isPremium);
           gem.claudeEdge = analysis.edge;
           gem.claudeConfidence = analysis.confidence;
