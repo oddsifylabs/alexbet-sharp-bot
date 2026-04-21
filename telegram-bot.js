@@ -1322,6 +1322,15 @@ bot.on('message', async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   
+  // Skip if this is a command
+  if (msg.text && msg.text.startsWith('/')) {
+    // Clear awaiting_bankroll_update state when a command is issued
+    if (userBankrolls[userId] === 'awaiting_bankroll_update') {
+      userBankrolls[userId] = 100; // Reset to default
+    }
+    return;
+  }
+  
   if (userBankrolls[userId] === 'awaiting_bankroll_update') {
     const validation = validateBankroll(msg.text);
     
