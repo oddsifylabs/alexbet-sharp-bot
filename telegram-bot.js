@@ -678,6 +678,12 @@ bot.on('message', async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   
+  // Skip bankroll handling if this is a command (starts with /)
+  // Commands like /scan, /stats, etc. should be handled by their own handlers
+  if (msg.text && msg.text.startsWith('/')) {
+    return;
+  }
+  
   if (userBankrolls[userId] === 'awaiting_bankroll') {
     const validation = validateBankroll(msg.text);
     
