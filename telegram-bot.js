@@ -9,7 +9,8 @@ const logger = require('./src/utils/logger');
 const { validateBankroll, validateTimezone, parseAPIResponse } = require('./src/utils/validation');
 const { exportToCSV, exportToTXT, exportToJSON, getAvailableExports } = require('./src/utils/export-handler');
 const supabaseClient = require('./src/services/supabase-client');
-const { registerPaymentHandlers, getUserTier, getSubscriptionDetails } = require('./src/services/whop-payment');
+const { registerPaymentHandlers, getUserTier } = require('./src/services/whop-payment');
+const { getSubscriptionDetails, isAdmin: checkIsAdmin } = require('./src/services/auth');
 const cron = require('node-cron');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
