@@ -328,7 +328,7 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                       console.log(`[GEM FILTER REJECT] ${sport} ${market} ${outcome.name}: ev=${ev.toFixed(4)} edge=${edge.toFixed(2)}% valid=${isValid}`);
                     }
 
-                    if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.002) return;
+                    if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.0001) return;
 
                     const kelly = calculateKellyStake(bankroll, consensusProb, bestPrice);  // ✅ Changed: use consensusProb
                     const conservative1pct = Math.floor(bankroll * 0.01);
@@ -849,7 +849,9 @@ bot.onText(/\/scan/, async (msg) => {
     
     if (!gems || gems.length === 0) {
       logger.warn('No gems found from API', { userId, fetchDuration });
-      bot.sendMessage(chatId, '⏳ No live games scheduled right now.\n\nTry again in a few hours.');
+      console.log('[DEBUG] fetchRealGems returned null or empty array');
+      console.log('[DEBUG] This means no outcomes passed the EV threshold (> 0.2%)');
+      bot.sendMessage(chatId, '⏳ No live games scheduled right now.\\n\\nTry again in a few hours.');
       return;
     }
 
