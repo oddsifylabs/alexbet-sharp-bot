@@ -362,7 +362,7 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
   });
 }
 
-// /start command
+// /start command - Professional welcome with inline buttons
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -386,54 +386,210 @@ bot.onText(/\/start/, async (msg) => {
     logger.debug('Could not load user data:', err.message);
   }
   
+  // Professional welcome message
+  const welcomeMessage = `
+🎯 *AlexBET Sharp - Professional Sports Betting*
+
+Find profitable edges in 6 sports:
+*NFL • NBA • MLB • NHL • ATP Tennis • EPL Soccer*
+
+Markets: *Moneyline, Spreads, Totals*
+Real-time odds, edge detection, CLV tracking
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✨ *What can this bot do?*
+
+🔍 */scan* - Find top gems
+📊 */stats* - Your performance  
+📥 */export* - Download data (CSV/JSON/PDF)
+🔀 */compare* - Line shopping
+🌍 */timezone* - Set timezone
+📱 */lite* - Web app tracker
+❓ */help* - All commands
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 Track bets: https://alexbetlite.netlify.app
+  `;
+  
   // Check if user already has bankroll set
   if (userBankrolls[userId] && typeof userBankrolls[userId] === 'number') {
-    bot.sendMessage(chatId, `
-⚡ *AlexBET Sharp Bot* 🎯
-
-Find profitable sports betting edges. Real data only.
-
-📊 Scans: 6 Sports × 3 Markets
-🏀 NBA, 🏈 NFL, ⚾ MLB, 🏒 NHL, 🎾 Tennis, ⚽ Soccer
-Moneyline, Spread, Totals
-
-💳 Subscription Tiers:
-🔴 *Free:* 3 gems, Moneyline only
-🟡 *Monthly ($9.99):* 10 gems, ML + Totals
-🟠 *Monthly Plus ($25):* 30 gems, all markets
-🟢 *Yearly ($99.99):* 20 gems, all markets
-🟣 *Lifetime ($999):* Unlimited gems, all features
-
-💰 *Your Bankroll:* $${userBankrolls[userId]}
-
-Use /scan to find gems or /bankroll to update.
-  `, { parse_mode: 'Markdown' });
+    bot.sendMessage(chatId, welcomeMessage, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🔍 Scan for Gems', callback_data: 'action_scan' }, { text: '📊 View Stats', callback_data: 'action_stats' }],
+          [{ text: '💰 Update Bankroll ($' + userBankrolls[userId] + ')', callback_data: 'action_bankroll' }],
+          [{ text: '⚙️ Settings', callback_data: 'action_settings' }, { text: '💎 Premium', callback_data: 'action_subscribe' }],
+          [{ text: '📱 Go to Lite App', url: 'https://alexbet-lite.netlify.app' }],
+          [{ text: '❓ Commands', callback_data: 'action_help' }]
+        ]
+      }
+    });
   } else {
-    bot.sendMessage(chatId, `
-⚡ *AlexBET Sharp Bot* 🎯
+    // New user - ask for bankroll
+    bot.sendMessage(chatId, welcomeMessage + `
 
-Find profitable sports betting edges. Real data only.
-
-📊 Scans: 6 Sports × 3 Markets
-🏀 NBA, 🏈 NFL, ⚾ MLB, 🏒 NHL, 🎾 Tennis, ⚽ Soccer
-Moneyline, Spread, Totals
-
-💳 Subscription Tiers:
-🔴 *Free:* 3 gems, Moneyline only
-🟡 *Monthly ($9.99):* 10 gems, ML + Totals
-🟠 *Monthly Plus ($25):* 30 gems, all markets
-🟢 *Yearly ($99.99):* 20 gems, all markets
-🟣 *Lifetime ($999):* Unlimited gems, all features
-
-What's your betting bankroll? (minimum $10, or reply 10 for default)
-  `, { parse_mode: 'Markdown' });
+💰 *What's your betting bankroll?*
+(minimum $10, or reply with a number)
+    `, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💵 $50', callback_data: 'bankroll_50' }, { text: '💵 $100', callback_data: 'bankroll_100' }, { text: '💵 $250', callback_data: 'bankroll_250' }],
+          [{ text: '💵 $500', callback_data: 'bankroll_500' }, { text: '💵 $1000', callback_data: 'bankroll_1000' }],
+          [{ text: '✏️ Enter Custom Amount', callback_data: 'bankroll_custom' }]
+        ]
+      }
+    });
     
     userBankrolls[userId] = 'awaiting_bankroll';
     logger.debug('Awaiting user bankroll input', { userId, chatId });
   }
 });
 
-// Handle bankroll input
+
+// Handle quick bankroll selection buttons
+bot.on('callback_query', async (query) => {
+  const userId = query.from.id;
+  const chatId = query.message.chat.id;
+  
+  // Handle bankroll quick select buttons
+  const bankrollMatch = query.data.match(/^bankroll_(\d+|custom)$/);
+  if (bankrollMatch) {
+    if (query.data === 'bankroll_custom') {
+      bot.sendMessage(chatId, '💰 Please enter your custom bankroll amount (minimum $10):');
+      userBankrolls[userId] = 'awaiting_bankroll';
+      bot.answerCallbackQuery(query.id);
+      return;
+    }
+    
+    const amount = parseInt(bankrollMatch[1]);
+    if (amount < 10) {
+      bot.answerCallbackQuery(query.id, { text: '❌ Minimum bankroll is $10', show_alert: true });
+      return;
+    }
+    
+    userBankrolls[userId] = amount;
+    
+    // Save to database
+    try {
+      await supabaseClient.upsertUser(userId, query.from.username || `user_${userId}`);
+      await supabaseClient.supabase
+        .from('users')
+        .update({ bankroll: amount, updated_at: new Date() })
+        .eq('telegram_id', userId);
+      
+      logger.info('Bankroll set via button', { userId, bankroll: amount });
+      bot.editMessageText(`✅ Bankroll set to $${amount}\n\n🚀 Ready to find gems! Use /scan or tap below:`, {
+        chat_id: chatId,
+        message_id: query.message.message_id,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔍 Scan for Gems', callback_data: 'action_scan' }, { text: '📊 View Stats', callback_data: 'action_stats' }],
+            [{ text: '⚙️ Settings', callback_data: 'action_settings' }, { text: '💎 Premium', callback_data: 'action_subscribe' }]
+          ]
+        }
+      });
+    } catch (err) {
+      logger.warn('Error saving bankroll:', err.message);
+      bot.answerCallbackQuery(query.id, { text: '✅ Bankroll set (local only)', show_alert: false });
+    }
+    
+    bot.answerCallbackQuery(query.id);
+    return;
+  }
+  
+  // Handle action buttons
+  if (query.data === 'action_scan') {
+    bot.answerCallbackQuery(query.id);
+    // Trigger /scan command
+    bot.emit('text', { text: '/scan', chat: { id: chatId }, from: query.from });
+  } else if (query.data === 'action_stats') {
+    bot.answerCallbackQuery(query.id);
+    // Trigger /stats command
+    bot.emit('text', { text: '/stats', chat: { id: chatId }, from: query.from });
+  } else if (query.data === 'action_bankroll') {
+    bot.sendMessage(chatId, `💰 *Update Your Bankroll*\n\nCurrent: $${userBankrolls[userId] || 'Not set'}\n\nEnter new amount (minimum $10):`, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '💵 $50', callback_data: 'bankroll_50' }, { text: '💵 $100', callback_data: 'bankroll_100' }],
+          [{ text: '💵 $250', callback_data: 'bankroll_250' }, { text: '✏️ Custom', callback_data: 'bankroll_custom' }]
+        ]
+      }
+    });
+    bot.answerCallbackQuery(query.id);
+  } else if (query.data === 'action_settings') {
+    bot.sendMessage(chatId, `⚙️ *Settings*\n\n🌍 Timezone: ${userTimezones[userId] || 'Not set'}\n💰 Bankroll: $${userBankrolls[userId] || 'Not set'}\n\nCustomize:`, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🌍 Change Timezone', callback_data: 'action_timezone' }],
+          [{ text: '💰 Change Bankroll', callback_data: 'action_bankroll' }],
+          [{ text: '← Back', callback_data: 'action_help' }]
+        ]
+      }
+    });
+    bot.answerCallbackQuery(query.id);
+  } else if (query.data === 'action_timezone') {
+    // Trigger /timezone command
+    bot.sendMessage(chatId, `🇺🇸 *Select your US timezone for game times:*`, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'EST (New York)', callback_data: 'tz_est' }, { text: 'CST (Chicago)', callback_data: 'tz_cst' }],
+          [{ text: 'MST (Denver)', callback_data: 'tz_mst' }, { text: 'PST (Los Angeles)', callback_data: 'tz_pst' }],
+          [{ text: 'AKST (Alaska)', callback_data: 'tz_akst' }, { text: 'HST (Hawaii)', callback_data: 'tz_hst' }]
+        ]
+      }
+    });
+    bot.answerCallbackQuery(query.id);
+  } else if (query.data === 'action_subscribe') {
+    // Trigger /subscribe command
+    const { sendSubscriptionMenu } = require('./src/services/whop-payment');
+    sendSubscriptionMenu(bot, chatId);
+    bot.answerCallbackQuery(query.id);
+  } else if (query.data === 'action_help') {
+    bot.sendMessage(chatId, `
+📊 *AlexBET Sharp - Command Menu*
+
+🔍 *SCANNING*
+/scan - Find top gems
+/stats - View your performance
+
+📥 *EXPORT (Premium)*
+/export - Download as CSV/JSON/PDF
+/export_csv - Excel format
+/export_txt - Text format
+/export_json - JSON format
+
+⚙️ *SETTINGS*
+/timezone - Set US timezone
+/bankroll - Set betting bankroll
+/lite - Open web tracker
+
+💳 *PREMIUM*
+/subscribe - View plans
+/pricing - Details & features
+
+📖 *HELP*
+/terms - Terms & Conditions
+/support - Customer support
+/help - This menu
+    `, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🔍 Scan', callback_data: 'action_scan' }, { text: '📊 Stats', callback_data: 'action_stats' }],
+          [{ text: '⚙️ Settings', callback_data: 'action_settings' }, { text: '💎 Premium', callback_data: 'action_subscribe' }],
+          [{ text: '📱 Lite App', url: 'https://alexbet-lite.netlify.app' }]
+        ]
+      }
+    });
+    bot.answerCallbackQuery(query.id);
+  }
+});
+
+
 bot.on('message', async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
