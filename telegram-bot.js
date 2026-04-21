@@ -370,17 +370,46 @@ bot.onText(/\/start/, async (msg) => {
   
   logger.info('User initiated /start command', { userId, userName, chatId });
   
-  // Load existing timezone from database if available
+  // Load existing timezone and bankroll from database if available
   try {
     const { data: user } = await supabaseClient.getUser(userId);
-    if (user && user.timezone) {
-      userTimezones[userId] = user.timezone;
+    if (user) {
+      if (user.timezone) {
+        userTimezones[userId] = user.timezone;
+      }
+      if (user.bankroll) {
+        userBankrolls[userId] = user.bankroll;
+        logger.info('Loaded user bankroll from database', { userId, bankroll: user.bankroll });
+      }
     }
   } catch (err) {
-    logger.debug('Could not load user timezone:', err.message);
+    logger.debug('Could not load user data:', err.message);
   }
   
-  bot.sendMessage(chatId, `
+  // Check if user already has bankroll set
+  if (userBankrolls[userId] && typeof userBankrolls[userId] === 'number') {
+    bot.sendMessage(chatId, `
+⚡ *AlexBET Sharp Bot* 🎯
+
+Find profitable sports betting edges. Real data only.
+
+📊 Scans: 6 Sports × 3 Markets
+🏀 NBA, 🏈 NFL, ⚾ MLB, 🏒 NHL, 🎾 Tennis, ⚽ Soccer
+Moneyline, Spread, Totals
+
+💳 Subscription Tiers:
+🔴 *Free:* 3 gems, Moneyline only
+🟡 *Monthly ($9.99):* 10 gems, ML + Totals
+🟠 *Monthly Plus ($25):* 30 gems, all markets
+🟢 *Yearly ($99.99):* 20 gems, all markets
+🟣 *Lifetime ($999):* Unlimited gems, all features
+
+💰 *Your Bankroll:* $${userBankrolls[userId]}
+
+Use /scan to find gems or /bankroll to update.
+  `, { parse_mode: 'Markdown' });
+  } else {
+    bot.sendMessage(chatId, `
 ⚡ *AlexBET Sharp Bot* 🎯
 
 Find profitable sports betting edges. Real data only.
@@ -398,13 +427,14 @@ Moneyline, Spread, Totals
 
 What's your betting bankroll? (minimum $10, or reply 10 for default)
   `, { parse_mode: 'Markdown' });
-  
-  userBankrolls[userId] = 'awaiting_bankroll';
-  logger.debug('Awaiting user bankroll input', { userId, chatId });
+    
+    userBankrolls[userId] = 'awaiting_bankroll';
+    logger.debug('Awaiting user bankroll input', { userId, chatId });
+  }
 });
 
 // Handle bankroll input
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
   
@@ -422,12 +452,30 @@ bot.on('message', (msg) => {
     }
     
     userBankrolls[userId] = validation.value;
-    logger.info('Bankroll configured by user', {
-      userId,
-      bankroll: validation.value,
-      chatId
-    });
-    bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value}\n\nNow use /scan to find gems!`);
+    
+    // Save bankroll to database for persistence
+    try {
+      await supabaseClient.upsertUser(userId, msg.from.username || `user_${userId}`);
+      const { error } = await supabaseClient.supabase
+        .from('users')
+        .update({ bankroll: validation.value, updated_at: new Date() })
+        .eq('telegram_id', userId);
+      
+      if (!error) {
+        logger.info('Bankroll configured and saved', {
+          userId,
+          bankroll: validation.value,
+          chatId
+        });
+        bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value}\\n\\nNow use /scan to find gems!`);
+      } else {
+        logger.warn('Could not save bankroll to database:', error.message);
+        bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value} (local only)\\n\\nNow use /scan to find gems!`);
+      }
+    } catch (err) {
+      logger.warn('Error saving bankroll:', err.message);
+      bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value}\\n\\nNow use /scan to find gems!`);
+    }
   }
 });
 
@@ -958,6 +1006,72 @@ White-label API + unlimited requests
 
 📧 Contact support for API key
   `, { parse_mode: 'Markdown' });
+});
+
+
+// /bankroll command - Update user's betting bankroll
+bot.onText(/\/bankroll/, (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const currentBankroll = userBankrolls[userId] && typeof userBankrolls[userId] === 'number' 
+    ? userBankrolls[userId] 
+    : 'Not set';
+  
+  bot.sendMessage(chatId, `
+💰 *Update Your Bankroll*
+
+Current bankroll: *$${currentBankroll}*
+
+Please enter your new betting bankroll (minimum $10):
+  `, { parse_mode: 'Markdown' });
+  
+  userBankrolls[userId] = 'awaiting_bankroll_update';
+  logger.debug('Awaiting user bankroll update', { userId, chatId });
+});
+
+// Handle bankroll update
+bot.on('message', async (msg) => {
+  const userId = msg.from.id;
+  const chatId = msg.chat.id;
+  
+  if (userBankrolls[userId] === 'awaiting_bankroll_update') {
+    const validation = validateBankroll(msg.text);
+    
+    if (!validation.valid) {
+      logger.warn('Invalid bankroll update received', {
+        userId,
+        input: msg.text,
+        error: validation.error
+      });
+      bot.sendMessage(chatId, validation.error);
+      return;
+    }
+    
+    userBankrolls[userId] = validation.value;
+    
+    // Save updated bankroll to database
+    try {
+      const { error } = await supabaseClient.supabase
+        .from('users')
+        .update({ bankroll: validation.value, updated_at: new Date() })
+        .eq('telegram_id', userId);
+      
+      if (!error) {
+        logger.info('Bankroll updated by user', {
+          userId,
+          bankroll: validation.value,
+          chatId
+        });
+        bot.sendMessage(chatId, `✅ Bankroll updated to $${validation.value}\\n\\nUse /scan to find gems!`);
+      } else {
+        logger.warn('Could not save bankroll to database:', error.message);
+        bot.sendMessage(chatId, `✅ Bankroll updated to $${validation.value} (local only)`);
+      }
+    } catch (err) {
+      logger.warn('Error updating bankroll:', err.message);
+      bot.sendMessage(chatId, `✅ Bankroll updated to $${validation.value}`);
+    }
+  }
 });
 
 // /timezone command (USA only)
