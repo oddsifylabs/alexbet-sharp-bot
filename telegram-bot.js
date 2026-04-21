@@ -363,12 +363,22 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
 }
 
 // /start command
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const userName = msg.from.username || 'anonymous';
   
   logger.info('User initiated /start command', { userId, userName, chatId });
+  
+  // Load existing timezone from database if available
+  try {
+    const { data: user } = await supabaseClient.getUser(userId);
+    if (user && user.timezone) {
+      userTimezones[userId] = user.timezone;
+    }
+  } catch (err) {
+    logger.debug('Could not load user timezone:', err.message);
+  }
   
   bot.sendMessage(chatId, `
 ⚡ *AlexBET Sharp Bot* 🎯
@@ -966,8 +976,9 @@ bot.onText(/\/timezone/, (msg) => {
 });
 
 // Handle USA timezone
-bot.on('callback_query', (q) => {
+bot.on('callback_query', async (q) => {
   const userId = q.from.id;
+  const chatId = q.message.chat.id;
   const tzMap = { 
     'tz_est': 'America/New_York', 
     'tz_cst': 'America/Chicago', 
@@ -976,9 +987,39 @@ bot.on('callback_query', (q) => {
     'tz_akst': 'America/Anchorage', 
     'tz_hst': 'Pacific/Honolulu' 
   };
+  const tzNames = {
+    'tz_est': 'EST (New York)',
+    'tz_cst': 'CST (Chicago)',
+    'tz_mst': 'MST (Denver)',
+    'tz_pst': 'PST (Los Angeles)',
+    'tz_akst': 'AKST (Alaska)',
+    'tz_hst': 'HST (Hawaii)'
+  };
+  
   if (tzMap[q.data]) { 
-    userTimezones[userId] = tzMap[q.data]; 
-    bot.answerCallbackQuery(q.id, '✅ Timezone updated'); 
+    userTimezones[userId] = tzMap[q.data];
+    
+    // Save to database for persistence
+    try {
+      await supabaseClient.upsertUser(userId, q.from.username || `user_${userId}`);
+      const { data: user } = await supabaseClient.getUser(userId);
+      if (user) {
+        const { error } = await supabaseClient.supabase
+          .from('users')
+          .update({ timezone: tzMap[q.data], updated_at: new Date() })
+          .eq('telegram_id', userId);
+        
+        if (!error) {
+          bot.answerCallbackQuery(q.id, `✅ ${tzNames[q.data]} set!`);
+          bot.sendMessage(chatId, `✅ **Timezone Updated**\n\nYou're set to: **${tzNames[q.data]}**\n\nGame times will display in your timezone when you run /scan`);
+        } else {
+          bot.answerCallbackQuery(q.id, '✅ Timezone updated (local only)');
+        }
+      }
+    } catch (err) {
+      logger.warn('Could not save timezone to database:', err.message);
+      bot.answerCallbackQuery(q.id, `✅ ${tzNames[q.data]} set!`);
+    }
   }
 });
 
