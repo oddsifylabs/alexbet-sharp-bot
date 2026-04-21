@@ -65,26 +65,18 @@ try {
   });
   
   // Set bot detailed description (appears in bot profile)
+  // Note: Telegram limits to 512 characters including line breaks
   bot.api.setMyDescription({
-    description: `🎯 AlexBET Sharp - Professional Sports Betting Analysis
+    description: `🎯 AlexBET Sharp - Professional Sports Betting
 
-Scan for +EV (positive expected value) betting opportunities with AI-powered analysis:
+Find +EV edges with AI-powered analysis across 6 sports (NFL, NBA, MLB, NHL, ATP, EPL)
 
-📊 6 Sports: NFL • NBA • MLB • NHL • ATP • EPL
-💰 Markets: Moneyline • Spreads • Totals
+📊 Markets: Moneyline, Spreads, Totals
 🔍 Real-time odds scanning & edge detection
 📈 CLV tracking & performance analytics
-🎁 Free tier with premium upgrades
+🎁 Free & premium tiers
 
-Commands:
-🔍 /scan - Find top gems
-📊 /stats - Your performance  
-📥 /export - Download data (CSV/JSON/PDF)
-🌍 /timezone - Set timezone
-💎 /subscribe - Premium features
-📱 /lite - Web app tracker
-
-Track your bets → https://alexbet-lite.netlify.app`
+/scan - Find gems | /stats - Your stats | /export - Download data | /lite - Web app`
   }).catch(err => {
     console.warn('[WARN] setMyDescription failed (non-critical):', err.message);
   });
