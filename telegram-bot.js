@@ -713,6 +713,10 @@ bot.on('message', async (msg) => {
   // Skip bankroll handling if this is a command (starts with /)
   // Commands like /scan, /stats, etc. should be handled by their own handlers
   if (msg.text && msg.text.startsWith('/')) {
+    // Also clear awaiting_bankroll state when a command is issued
+    if (userBankrolls[userId] === 'awaiting_bankroll') {
+      userBankrolls[userId] = 100; // Reset to default
+    }
     return;
   }
   
