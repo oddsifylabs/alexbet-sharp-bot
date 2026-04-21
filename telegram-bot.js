@@ -293,14 +293,14 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                       const key = getOutcomeKey(outcome, market);
                       const existing = outcomeMap.get(key) || {
                         outcome,
-                        impliedProbs: [],  // ✅ Changed: store raw implied probs
+                        impliedProbs: [],
+                        bookmakers: new Set(),  // ✅ Track UNIQUE bookmakers
                         bestPrice: null,
-                        bestBook: null,
-                        books: 0
+                        bestBook: null
                       };
 
-                      existing.impliedProbs.push(impliedProb);  // ✅ Changed: push raw implied prob
-                      existing.books += 1;
+                      existing.impliedProbs.push(impliedProb);
+                      existing.bookmakers.add(bookmaker.title);  // ✅ Add bookmaker name
 
                       if (existing.bestPrice == null || Number(outcome.price) > existing.bestPrice) {
                         existing.bestPrice = Number(outcome.price);
@@ -321,11 +321,12 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
 
                   // ✅ FIX: Calculate edge using market consensus (no vig normalization)
                   let filteredCount = 0;
-                  outcomeMap.forEach(({ outcome, impliedProbs, bestPrice, bestBook, books }) => {
+                  outcomeMap.forEach(({ outcome, impliedProbs, bestPrice, bestBook, bookmakers }) => {
+                    const books = bookmakers.size;  // ✅ Count of UNIQUE bookmakers
                     if (!impliedProbs.length || bestPrice == null || books < 2) {
                       // DEBUG
                       if (allGems.length === 0 && processedBooks > 0) {
-                        console.log(`[GEM SKIP] ${game.away_team} vs ${game.home_team}: Outcome failed filter - Probs:${impliedProbs.length} Price:${bestPrice} Books:${books}`);
+                        console.log(`[GEM SKIP] ${outcome.name}: Probs=${impliedProbs.length} Price=${bestPrice} Books=${books}`);
                       }
                       return;
                     }
