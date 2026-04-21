@@ -320,7 +320,14 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                     const decimalOdds = americanToDecimal(bestPrice);
                     const ev = (consensusProb * decimalOdds) - 1;
 
-                    if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.01) return;
+                    // DEBUG LOGGING
+                    const isValid = Number.isFinite(ev) && Number.isFinite(edge) && ev > 0.01;
+                    if (!isValid && allGems.length === 0) {
+                      // Log first few rejections to debug
+                      console.log(`[GEM FILTER REJECT] ${sport} ${market} ${outcome.name}: ev=${ev.toFixed(4)} edge=${edge.toFixed(2)}% valid=${isValid}`);
+                    }
+
+                    if (!Number.isFinite(ev) || !Number.isFinite(edge) || ev <= 0.002) return;
 
                     const kelly = calculateKellyStake(bankroll, consensusProb, bestPrice);  // ✅ Changed: use consensusProb
                     const conservative1pct = Math.floor(bankroll * 0.01);
