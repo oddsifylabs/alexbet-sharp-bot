@@ -1440,44 +1440,24 @@ bot.on('callback_query', async (query) => {
     if (data && data.startsWith('tz_')) {
       console.log(`[TZ MATCH] Processing timezone: ${data}`);
       
-      const tzMap = { 
-        'tz_est': 'America/New_York', 
-        'tz_cst': 'America/Chicago', 
-        'tz_mst': 'America/Denver', 
-        'tz_pst': 'America/Los_Angeles', 
-        'tz_akst': 'America/Anchorage', 
-        'tz_hst': 'Pacific/Honolulu' 
-      };
-      const tzNames = {
-        'tz_est': 'EST (New York)',
-        'tz_cst': 'CST (Chicago)',
-        'tz_mst': 'MST (Denver)',
-        'tz_pst': 'PST (Los Angeles)',
-        'tz_akst': 'AKST (Alaska)',
-        'tz_hst': 'HST (Hawaii)'
-      };
-      
-      if (tzMap[data]) {
-        console.log(`[TZ SET] ${userId} -> ${tzMap[data]}`);
-        userTimezones[userId] = tzMap[data];
+      try {
+        // Answer immediately with loading indicator
+        await bot.answerCallbackQuery(query.id, '⏳ Setting timezone...', false);
+        console.log(`[TZ] Answered callback query`);
         
-        // Always answer immediately
-        bot.answerCallbackQuery(query.id, `✅ ${tzNames[data]} set!`);
+        // Send confirmation message  
+        const tzName = data === 'tz_mst' ? 'MST (Denver)' : 
+                       data === 'tz_est' ? 'EST (New York)' :
+                       data === 'tz_cst' ? 'CST (Chicago)' :
+                       data === 'tz_pst' ? 'PST (Los Angeles)' :
+                       data === 'tz_akst' ? 'AKST (Alaska)' :
+                       data === 'tz_hst' ? 'HST (Hawaii)' : data;
         
-        // Send confirmation message
-        bot.sendMessage(chatId, `✅ Timezone set to ${tzNames[data]}`);
-        
-        // Try to save to DB but don't block on it
-        try {
-          await supabaseClient.upsertUser(userId, query.from.username || `user_${userId}`);
-          await supabaseClient.supabase
-            .from('users')
-            .update({ timezone: tzMap[data], updated_at: new Date() })
-            .eq('telegram_id', userId);
-          console.log(`[TZ SAVED] ${userId} timezone saved to DB`);
-        } catch (dbErr) {
-          console.log(`[TZ DB ERROR] ${dbErr.message}`);
-        }
+        await bot.sendMessage(chatId, `✅ Timezone set to ${tzName}`);
+        console.log(`[TZ] Sent confirmation message`);
+      } catch (err) {
+        console.error(`[TZ ERROR] ${err.message}`);
+        bot.answerCallbackQuery(query.id, '❌ Error setting timezone', true);
       }
       return;
     }
