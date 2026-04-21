@@ -523,9 +523,17 @@ Real-time odds, edge detection, CLV tracking
 bot.on('callback_query', async (query) => {
   const userId = query.from.id;
   const chatId = query.message.chat.id;
+  const data = query.data;
+  
+  // CRITICAL: Skip timezone callbacks - let the unified handler (at line 1427) process them
+  // This prevents the first handler from intercepting timezone selections
+  if (data && data.startsWith('tz_')) {
+    console.log(`[CALLBACK SKIP] First handler passing through tz_ callback: ${data}`);
+    return;
+  }
   
   // Handle bankroll quick select buttons
-  const bankrollMatch = query.data.match(/^bankroll_(\\d+|custom)$/);
+  const bankrollMatch = data.match(/^bankroll_(\\d+|custom)$/);
   if (bankrollMatch) {
     if (query.data === 'bankroll_custom') {
       bot.sendMessage(chatId, '💰 Please enter your custom bankroll amount (minimum $1):');
