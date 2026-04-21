@@ -1562,6 +1562,14 @@ Ready? /subscribe to purchase!
 bot.onText(/\/timezone/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+  
+  // Clear any pending bankroll state
+  if (userBankrolls[userId] === 'awaiting_bankroll') {
+    delete userBankrolls[userId];
+  }
+  
+  console.log(`[/TIMEZONE] User ${userId} requested timezone selection`);
+  
   bot.sendMessage(chatId, `🇺🇸 Select your US timezone for game times:`, {
     reply_markup: {
       inline_keyboard: [
