@@ -1920,6 +1920,15 @@ Ready? /subscribe to purchase!
   bot.answerCallbackQuery(query.id);
 });
 
+// CATCH-ALL: Log any callback that reaches here (unhandled by previous handlers)
+bot.on('callback_query', (query) => {
+  console.log(`\n[CATCHALL CALLBACK] Unhandled callback reached catch-all handler`);
+  console.log(`[CATCHALL CALLBACK] Data: ${query.data}`);
+  console.log(`[CATCHALL CALLBACK] User: ${query.from.id}`);
+  console.log(`[CATCHALL CALLBACK] This callback was NOT handled by any previous handler\n`);
+  bot.answerCallbackQuery(query.id, '⚠️ Callback not handled', true);
+});
+
 // Whop integration placeholder
 // Users will be redirected to Whop for checkout
 // No embedded payment processing needed
