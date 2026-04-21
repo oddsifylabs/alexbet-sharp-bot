@@ -96,7 +96,8 @@ if (!whopApiKey) {
 }
 const whopStoreUrl = 'https://whop.com/oddsify-shop';
 
-// Initialize Claude optimizer
+// Initialize ClaudeOptimizer
+// ✅ DEPLOYMENT: 2026-04-21 09:55 - Force fresh restart
 // UPDATED (2026-04-18 09:50): Re-enabled with Haiku-only mode (no Sonnet/Opus)
 // Reduced cost: ~1x vs 10x previous cascade
 let claudeOptimizer = null;
