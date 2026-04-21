@@ -759,49 +759,7 @@ Track your P&L, win rate, and bet history:
   `, { parse_mode: 'Markdown' });
 });
 
-// /subscribe command
-bot.onText(/\/subscribe/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `
-*💎 AlexBET Sharp - Subscription Plans*
-
-*🔴 FREE TIER*
-├─ 3 gems per scan
-├─ Moneyline only
-├─ Export: disabled
-└─ Cost: Free
-
-*🟡 MONTHLY ($9.99 USD)*
-├─ 10 gems per scan
-├─ Moneyline + Totals
-├─ Spreads: not included
-├─ Export: enabled
-└─ Payment: Telegram Stars
-
-*🟠 MONTHLY PLUS ($25 USD)*
-├─ 30 gems per scan (3x more!)
-├─ All markets (ML, Spreads, Totals)
-├─ Export: enabled
-├─ Best for aggressive scanners
-└─ Payment: Telegram Stars
-
-*🟢 YEARLY ($99.99 USD)*
-├─ 20 gems per scan
-├─ All markets (ML, Spreads, Totals)
-├─ Export: enabled
-├─ Save 2 months vs Monthly
-└─ Payment: Telegram Stars
-
-*🟣 LIFETIME ($999 USD)*
-├─ Unlimited gems
-├─ All markets + future features
-├─ Export: all formats
-└─ Payment: One-time
-
-👉 Use /scan to start (free tier)
-👉 Use /subscribe again to upgrade via Telegram Stars
-  `, { parse_mode: 'Markdown' });
-});
+// /subscribe command - Now handled by whop-payment.js (registerPaymentHandlers)
 
 // /lite command
 bot.onText(/\/lite/, (msg) => {
@@ -1480,6 +1438,6 @@ bot.on('polling_error', (err) => {
   console.error('[POLLING_ERROR]', err.message);
 });
 
-console.log('✅ Bot running with Telegram Stars payments integrated...');
+console.log('✅ Bot running with Whop payment integration...');
 console.log('📍 Subscribe: /subscribe');
-console.log('🛒 Telegram Stars ready for payments');
+console.log('🛒 Whop ready for payments');
