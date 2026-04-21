@@ -9,7 +9,7 @@ const logger = require('./src/utils/logger');
 const { validateBankroll, validateTimezone, parseAPIResponse } = require('./src/utils/validation');
 const { exportToCSV, exportToTXT, exportToJSON, getAvailableExports } = require('./src/utils/export-handler');
 const supabaseClient = require('./src/services/supabase-client');
-const { registerPaymentHandlers } = require('./src/services/telegram-stars-payment');
+const { registerPaymentHandlers, getUserTier, getSubscriptionDetails } = require('./src/services/whop-payment');
 const cron = require('node-cron');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -1245,48 +1245,46 @@ bot.onText(/\/export_json/, async (msg) => {
   }
 });
 
-// /subscribe command - Now handled by telegram-stars-payment.js
+// /subscribe command - Now handled by whop-payment.js
 // The registerPaymentHandlers() call above automatically registers this command
-// showing 3 pricing tiers: Monthly ($9.99), Yearly ($99.99), Lifetime ($999)
+// Sell both: Bot access + Private channel on Whop
 
-// /status command - Show current subscription status
 bot.onText(/\/status/, async (msg) => {
   try {
     const userId = msg.from.id;
     const chatId = msg.chat.id;
     
-    const user = await supabaseClient.getUser(userId);
-    
-    if (!user) {
-      return bot.sendMessage(chatId, '❌ User not found. Try running /start first.');
-    }
+    const subscriptionDetails = await getSubscriptionDetails(userId);
     
     let statusMsg = '📊 **Your Subscription Status**\n\n';
     
-    if (user.subscription_tier === 'free' || !user.subscription_tier) {
+    if (subscriptionDetails.tier === 'free') {
       statusMsg += '**Status:** 🆓 Free Tier\n';
-      statusMsg += '**Features:** Limited to 3 gems per export\n\n';
-      statusMsg += '_Ready to upgrade?_\n/subscribe';
-    } else if (user.subscription_tier === 'lifetime') {
-      statusMsg += '**Status:** 👑 Lifetime Premium\n';
-      statusMsg += '**Expires:** Never\n';
-      statusMsg += '**Features:** Unlimited access\n\n';
-      statusMsg += '✅ Thank you for your support!';
+      statusMsg += '**Gems:** 3 per scan\n';
+      statusMsg += '**Markets:** Moneyline only\n';
+      statusMsg += '**Export:** Disabled\n\n';
+      statusMsg += '💡 Upgrade for unlimited access:\n/subscribe';
     } else {
-      const expiryDate = new Date(user.subscription_expiry);
-      const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+      statusMsg += `**Status:** ✅ ${subscriptionDetails.tier.toUpperCase()}\n`;
+      statusMsg += `**Product:** ${subscriptionDetails.product_name}\n`;
+      statusMsg += `**Gems:** ${subscriptionDetails.gems} per scan\n`;
+      statusMsg += `**Markets:** ${subscriptionDetails.markets.join(', ')}\n`;
+      statusMsg += `**Export:** ${subscriptionDetails.export ? '✅ Enabled' : '❌ Disabled'}\n`;
       
-      statusMsg += `**Status:** ✅ ${user.subscription_tier.toUpperCase()} Premium\n`;
-      statusMsg += `**Expires:** ${expiryDate.toLocaleDateString()}\n`;
-      statusMsg += `**Days Left:** ${daysLeft > 0 ? daysLeft : 'Expired'}\n`;
-      statusMsg += '**Features:** Unlimited access\n\n';
-      
-      if (daysLeft <= 7 && daysLeft > 0) {
-        statusMsg += '⏰ _Renewal coming soon!_\n/subscribe to extend';
-      } else if (daysLeft <= 0) {
-        statusMsg += '❌ _Subscription expired_\n/subscribe to renew';
+      if (subscriptionDetails.expires_at) {
+        const expiryDate = new Date(subscriptionDetails.expires_at);
+        const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+        statusMsg += `**Expires:** ${expiryDate.toLocaleDateString()}\n`;
+        
+        if (daysLeft <= 7 && daysLeft > 0) {
+          statusMsg += `\n⏰ _Renewal coming soon!_ (${daysLeft} days left)\n/subscribe to extend`;
+        } else if (daysLeft <= 0) {
+          statusMsg += '\n❌ _Subscription expired_\n/subscribe to renew';
+        } else {
+          statusMsg += `\n✅ Enjoy your premium access! (${daysLeft} days left)`;
+        }
       } else {
-        statusMsg += 'Enjoy your premium access!';
+        statusMsg += '\n✅ Lifetime access - No expiration';
       }
     }
     
@@ -1299,7 +1297,7 @@ bot.onText(/\/status/, async (msg) => {
 
 // Handle callback queries
 bot.on('callback_query', (query) => {
-  if (query.data === 'learn_more') {
+  if (query.data === 'whop_learn_more') {
     bot.sendMessage(query.message.chat.id, `
 📚 What's Included?
 
