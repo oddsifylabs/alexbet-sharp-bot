@@ -524,13 +524,8 @@ bot.on('callback_query', async (query) => {
   const userId = query.from.id;
   const chatId = query.message.chat.id;
   
-  // Skip timezone callbacks - let the timezone handler deal with them
-  if (query.data && query.data.startsWith('tz_')) {
-    return;
-  }
-  
   // Handle bankroll quick select buttons
-  const bankrollMatch = query.data.match(/^bankroll_(\d+|custom)$/);
+  const bankrollMatch = query.data.match(/^bankroll_(\\d+|custom)$/);
   if (bankrollMatch) {
     if (query.data === 'bankroll_custom') {
       bot.sendMessage(chatId, '💰 Please enter your custom bankroll amount (minimum $1):');
@@ -1898,11 +1893,6 @@ bot.onText(/\/status/, async (msg) => {
 
 // Handle callback queries
 bot.on('callback_query', (query) => {
-  // Skip timezone callbacks - handled elsewhere
-  if (query.data && query.data.startsWith('tz_')) {
-    return;
-  }
-  
   if (query.data === 'whop_learn_more') {
     bot.sendMessage(query.message.chat.id, `
 📚 What's Included?
