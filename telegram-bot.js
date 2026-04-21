@@ -728,16 +728,18 @@ bot.on('message', async (msg) => {
   
   console.log(`[MESSAGE] Received from ${userId}: "${msg.text}" (type: ${typeof msg.text})`);
   
-  // Skip bankroll handling if this is a command (starts with /)
-  // Commands like /scan, /stats, etc. should be handled by their own handlers
+  // CRITICAL: Commands always take priority - clear bankroll state immediately
   if (msg.text && msg.text.startsWith('/')) {
-    console.log(`[MESSAGE SKIP] Skipping bankroll for command: ${msg.text}`);
-    // Also clear awaiting_bankroll state when a command is issued
-    if (userBankrolls[userId] === 'awaiting_bankroll') {
-      userBankrolls[userId] = 100; // Reset to default
+    console.log(`[MESSAGE] Command detected: ${msg.text}`);
+    // Clear awaiting_bankroll state for ANY command
+    if (userBankrolls[userId] === 'awaiting_bankroll' || userBankrolls[userId] === 'awaiting_bankroll_update') {
+      console.log(`[MESSAGE] Clearing awaiting_bankroll state for command`);
+      delete userBankrolls[userId];
     }
-    return;
+    return; // Return immediately - let command handlers process
   }
+  
+  console.log(`[MESSAGE] Non-command message, bankroll state: ${userBankrolls[userId]}`);
   
   if (userBankrolls[userId] === 'awaiting_bankroll') {
     const validation = validateBankroll(msg.text);
