@@ -438,7 +438,7 @@ Real-time odds, edge detection, CLV tracking
     bot.sendMessage(chatId, welcomeMessage + `
 
 💰 *What's your betting bankroll?*
-(minimum $10, or reply with a number)
+(minimum $1, or reply with a number)
     `, {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -465,15 +465,15 @@ bot.on('callback_query', async (query) => {
   const bankrollMatch = query.data.match(/^bankroll_(\d+|custom)$/);
   if (bankrollMatch) {
     if (query.data === 'bankroll_custom') {
-      bot.sendMessage(chatId, '💰 Please enter your custom bankroll amount (minimum $10):');
+      bot.sendMessage(chatId, '💰 Please enter your custom bankroll amount (minimum $1):');
       userBankrolls[userId] = 'awaiting_bankroll';
       bot.answerCallbackQuery(query.id);
       return;
     }
     
     const amount = parseInt(bankrollMatch[1]);
-    if (amount < 10) {
-      bot.answerCallbackQuery(query.id, { text: '❌ Minimum bankroll is $10', show_alert: true });
+    if (amount < 1) {
+      bot.answerCallbackQuery(query.id, { text: '❌ Minimum bankroll is $1', show_alert: true });
       return;
     }
     
@@ -570,8 +570,7 @@ Start tracking bets in /lite app!
       bot.sendMessage(chatId, '❌ Error loading stats. Please try /stats command.');
     }
   } else if (query.data === 'action_bankroll') {
-    bot.sendMessage(chatId, `💰 *Update Your Bankroll*\n\nCurrent: $${userBankrolls[userId] || 'Not set'}\n\nEnter new amount (minimum $10):`, {
-      parse_mode: 'Markdown',
+    bot.sendMessage(chatId, `💰 *Update Your Bankroll*\n\nCurrent: $${userBankrolls[userId] || 'Not set'}\n\nEnter new amount (minimum $1):`, {
       reply_markup: {
         inline_keyboard: [
           [{ text: '💵 $50', callback_data: 'bankroll_50' }, { text: '💵 $100', callback_data: 'bankroll_100' }],
@@ -1243,7 +1242,7 @@ bot.onText(/\/bankroll/, (msg) => {
 
 Current bankroll: *$${currentBankroll}*
 
-Please enter your new betting bankroll (minimum $10):
+Please enter your new betting bankroll (minimum $1):
   `, { parse_mode: 'Markdown' });
   
   userBankrolls[userId] = 'awaiting_bankroll_update';

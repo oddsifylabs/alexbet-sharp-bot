@@ -19,10 +19,10 @@ function validateBankroll(bankroll) {
     };
   }
   
-  if (parsed < 10) {
+  if (parsed < 1) {
     return {
       valid: false,
-      error: '❌ Minimum bankroll is $10'
+      error: '❌ Minimum bankroll is $1'
     };
   }
   
