@@ -275,10 +275,16 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                   const outcomeMap = new Map();
 
                   // ✅ FIX: Collect raw implied probabilities (no normalization by vig)
+                  let processedBooks = 0;
                   bookmakers.forEach(bookmaker => {
                     const bookMarket = (bookmaker.markets || []).find(m => m.key === market);
                     const outcomes = bookMarket?.outcomes || [];
-                    if (outcomes.length < 2) return;
+                    if (outcomes.length < 2) {
+                      // This bookmaker doesn't have this market
+                      return;
+                    }
+                    
+                    processedBooks++;
 
                     outcomes.forEach(outcome => {
                       const impliedProb = americanToImpliedProb(outcome.price);
@@ -306,16 +312,25 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                   });
 
                   // DEBUG: Log outcome map size
-                  if (outcomeMap.size > 0 && allGems.length === 0) {
-                    console.log(`[GEM DEBUG] ${game.away_team} vs ${game.home_team} (${market}): Found ${outcomeMap.size} outcomes`);
+                  if (outcomeMap.size > 0 && processedBooks > 0) {
+                    console.log(`[GEM DEBUG] ${game.away_team} vs ${game.home_team} (${market}): Found ${outcomeMap.size} outcomes from ${processedBooks}/${bookmakers.length} books`);
                     outcomeMap.forEach((data, key) => {
                       console.log(`  Outcome: ${key}, Books: ${data.books}, BestPrice: ${data.bestPrice}, Probs: ${data.impliedProbs.length}`);
                     });
                   }
 
                   // ✅ FIX: Calculate edge using market consensus (no vig normalization)
+                  let filteredCount = 0;
                   outcomeMap.forEach(({ outcome, impliedProbs, bestPrice, bestBook, books }) => {
-                    if (!impliedProbs.length || bestPrice == null || books < 2) return;
+                    if (!impliedProbs.length || bestPrice == null || books < 2) {
+                      // DEBUG
+                      if (allGems.length === 0 && processedBooks > 0) {
+                        console.log(`[GEM SKIP] ${game.away_team} vs ${game.home_team}: Outcome failed filter - Probs:${impliedProbs.length} Price:${bestPrice} Books:${books}`);
+                      }
+                      return;
+                    }
+                    
+                    filteredCount++;
 
                     // Market consensus = average of raw implied probs across all bookmakers
                     const consensusProb = impliedProbs.reduce((sum, value) => sum + value, 0) / impliedProbs.length;
