@@ -1447,6 +1447,7 @@ bot.on('callback_query', async (q) => {
   
   if (tzMap[q.data]) { 
     userTimezones[userId] = tzMap[q.data];
+    logger.debug('Timezone button clicked', { userId, callbackData: q.data, timezone: tzMap[q.data] });
     
     // Save to database for persistence
     try {
@@ -1459,16 +1460,27 @@ bot.on('callback_query', async (q) => {
           .eq('telegram_id', userId);
         
         if (!error) {
+          logger.info('Timezone saved to database', { userId, timezone: tzMap[q.data] });
           bot.answerCallbackQuery(q.id, `✅ ${tzNames[q.data]} set!`);
           bot.sendMessage(chatId, `✅ **Timezone Updated**\n\nYou're set to: **${tzNames[q.data]}**\n\nGame times will display in your timezone when you run /scan`);
         } else {
+          logger.warn('Database error saving timezone', { userId, error: error.message });
           bot.answerCallbackQuery(q.id, '✅ Timezone updated (local only)');
+          bot.sendMessage(chatId, `✅ Timezone set to ${tzNames[q.data]} (local only)`);
         }
+      } else {
+        logger.warn('User not found in database', { userId });
+        bot.answerCallbackQuery(q.id, `✅ ${tzNames[q.data]} set!`);
+        bot.sendMessage(chatId, `✅ Timezone set to ${tzNames[q.data]}`);
       }
     } catch (err) {
-      logger.warn('Could not save timezone to database:', err.message);
+      logger.warn('Could not save timezone to database:', { userId, error: err.message });
       bot.answerCallbackQuery(q.id, `✅ ${tzNames[q.data]} set!`);
+      bot.sendMessage(chatId, `✅ Timezone set to ${tzNames[q.data]}`);
     }
+  } else {
+    logger.warn('Unknown timezone callback', { userId, callbackData: q.data });
+    bot.answerCallbackQuery(q.id, '❌ Unknown timezone');
   }
 });
 
