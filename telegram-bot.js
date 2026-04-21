@@ -56,8 +56,40 @@ try {
   ]).catch(err => {
     console.warn('[WARN] setMyCommands failed (non-critical):', err.message);
   });
+  
+  // Set bot short description (appears in Telegram search + profile)
+  bot.api.setMyShortDescription({
+    short_description: '🎯 Find profitable sports betting edges with AI-powered +EV scanning across 6 sports'
+  }).catch(err => {
+    console.warn('[WARN] setMyShortDescription failed (non-critical):', err.message);
+  });
+  
+  // Set bot detailed description (appears in bot profile)
+  bot.api.setMyDescription({
+    description: `🎯 AlexBET Sharp - Professional Sports Betting Analysis
+
+Scan for +EV (positive expected value) betting opportunities with AI-powered analysis:
+
+📊 6 Sports: NFL • NBA • MLB • NHL • ATP • EPL
+💰 Markets: Moneyline • Spreads • Totals
+🔍 Real-time odds scanning & edge detection
+📈 CLV tracking & performance analytics
+🎁 Free tier with premium upgrades
+
+Commands:
+🔍 /scan - Find top gems
+📊 /stats - Your performance  
+📥 /export - Download data (CSV/JSON/PDF)
+🌍 /timezone - Set timezone
+💎 /subscribe - Premium features
+📱 /lite - Web app tracker
+
+Track your bets → https://alexbet-lite.netlify.app`
+  }).catch(err => {
+    console.warn('[WARN] setMyDescription failed (non-critical):', err.message);
+  });
 } catch (e) {
-  console.warn('[WARN] setMyCommands error (non-critical):', e.message);
+  console.warn('[WARN] setMyCommands/setMyDescription error (non-critical):', e.message);
 }
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY;
