@@ -502,12 +502,65 @@ bot.on('callback_query', async (query) => {
   // Handle action buttons
   if (query.data === 'action_scan') {
     bot.answerCallbackQuery(query.id);
-    // Trigger /scan command
-    bot.emit('text', { text: '/scan', chat: { id: chatId }, from: query.from });
+    // Call scan logic directly
+    try {
+      const bankroll = userBankrolls[userId] || 100;
+      const timezone = userTimezones[userId] || 'America/New_York';
+      
+      // Check rate limit
+      const rateLimitStatus = scanLimiter.isRateLimited(userId);
+      if (rateLimitStatus.limited) {
+        bot.sendMessage(chatId, `⏱️ Rate limited! Please wait ${rateLimitStatus.secondsLeft}s before next scan.`);
+        return;
+      }
+      
+      // Fetch gems
+      const gems = await retryWithBackoff(
+        () => fetchRealGems(bankroll, timezone),
+        3,
+        1000
+      );
+      
+      if (!gems || gems.length === 0) {
+        bot.sendMessage(chatId, '⏳ No opportunities right now. Check back soon!');
+        return;
+      }
+      
+      let scanMessage = `🎯 *Top ${gems.length} Gems*\n\n`;
+      gems.slice(0, 5).forEach((gem, i) => {
+        scanMessage += `${i+1}. **${gem.team}** (${gem.market})\n`;
+        scanMessage += `   Edge: ${gem.edge.toFixed(1)}% | EV: $${gem.ev.toFixed(2)}\n`;
+        scanMessage += `   Odds: ${gem.bestPrice > 0 ? '+' : ''}${gem.bestPrice}\n\n`;
+      });
+      
+      bot.sendMessage(chatId, scanMessage, { parse_mode: 'Markdown' });
+    } catch (err) {
+      logger.error('Error in action_scan:', err.message);
+      bot.sendMessage(chatId, '❌ Error scanning gems. Please try /scan command.');
+    }
   } else if (query.data === 'action_stats') {
     bot.answerCallbackQuery(query.id);
-    // Trigger /stats command
-    bot.emit('text', { text: '/stats', chat: { id: chatId }, from: query.from });
+    // Call stats logic directly
+    try {
+      const subscription = await getSubscriptionDetails(userId);
+      const statsMessage = `
+📊 *Your Performance*
+
+💰 Bankroll: $${userBankrolls[userId] || 'Not set'}
+🌍 Timezone: ${userTimezones[userId] || 'Not set'}
+💎 Tier: ${subscription.tier.toUpperCase()}
+
+🎯 Win Rate: --% (No bets tracked)
+📈 ROI: --% (No bets tracked)
+💵 Total Wagered: $0
+
+Start tracking bets in /lite app!
+      `;
+      bot.sendMessage(chatId, statsMessage, { parse_mode: 'Markdown' });
+    } catch (err) {
+      logger.error('Error in action_stats:', err.message);
+      bot.sendMessage(chatId, '❌ Error loading stats. Please try /stats command.');
+    }
   } else if (query.data === 'action_bankroll') {
     bot.sendMessage(chatId, `💰 *Update Your Bankroll*\n\nCurrent: $${userBankrolls[userId] || 'Not set'}\n\nEnter new amount (minimum $10):`, {
       parse_mode: 'Markdown',
