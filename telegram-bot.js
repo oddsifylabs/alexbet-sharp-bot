@@ -862,7 +862,6 @@ bot.onText(/\/scan/, async (msg) => {
     logger.info('Scan results stored for export', { userId, gemsCount: topGems.length });
 
     // Then send sport-grouped gem cards - ONE GEM PER MESSAGE for clarity
-    let gemCounter = 1;
     Object.keys(sportGroups).forEach(sport => {
       const gemsInSport = sportGroups[sport];
       
@@ -876,9 +875,12 @@ bot.onText(/\/scan/, async (msg) => {
         const gameDate = gem.gameDate ? gem.gameDate : 'TBD';
         const gameTime = gem.gameTime ? gem.gameTime : 'TBD';
         
+        // Find the gem's rank in topGems for consistent numbering
+        const gemRank = topGems.findIndex(g => g.pick === gem.pick && g.odds === gem.odds && g.game === gem.game) + 1;
+        
         // One gem per message - clean, scannable format
         let gemMsg = ``;
-        gemMsg += `#${gemCounter} | ${getSportEmoji(gem.sport)} *${gem.betType}*\n`;
+        gemMsg += `#${gemRank} | ${getSportEmoji(gem.sport)} *${gem.betType}*\n`;
         gemMsg += `\n`;
         gemMsg += `*${gem.pick}*\n`;
         gemMsg += `${gem.odds > 0 ? '+' : ''}${gem.odds}\n`;
@@ -894,7 +896,6 @@ bot.onText(/\/scan/, async (msg) => {
         gemMsg += `📊 ${gem.book} (${gem.booksCompared} books)\n`;
         
         bot.sendMessage(chatId, gemMsg, { parse_mode: 'Markdown' });
-        gemCounter++;
       });
     });
   } catch (err) {
