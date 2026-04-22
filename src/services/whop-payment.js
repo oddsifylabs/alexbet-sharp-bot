@@ -252,8 +252,9 @@ function registerPaymentHandlers(bot) {
     sendSubscriptionMenu(bot, msg.chat.id);
   });
 
-  // Learn more callback
+  // Learn more callback - ONLY handle whop callbacks, let timezone/other callbacks pass through
   bot.on('callback_query', (query) => {
+    // Only process whop-specific callbacks, let others be handled by other handlers
     if (query.data === 'whop_learn_more') {
       const features = `
 ✅ **BOT Features (All Tiers)**
@@ -277,6 +278,7 @@ Ready to upgrade? Click a plan above!
       bot.sendMessage(query.message.chat.id, features, { parse_mode: 'Markdown' });
       bot.answerCallbackQuery(query.id);
     }
+    // NOTE: Do NOT answer callback or handle timezone/other callbacks here - let other handlers process them
   });
 
   logger.info('Whop payment handlers registered');
