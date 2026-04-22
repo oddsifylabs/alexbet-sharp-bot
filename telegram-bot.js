@@ -634,7 +634,30 @@ bot.onText(/\/scan/, async (msg) => {
   }
   
   // Get user's bankroll or use default
-  const bankroll = userBankrolls[userId] || 100;
+  let bankroll = userBankrolls[userId];
+  
+  // If not in memory, try to load from database (important for group usage)
+  if (!bankroll || bankroll === 'awaiting_bankroll' || bankroll === 'awaiting_bankroll_update') {
+    try {
+      const { data: user } = await supabaseClient.getUser(userId);
+      if (user && user.bankroll) {
+        bankroll = user.bankroll;
+        userBankrolls[userId] = bankroll;
+        logger.info('Loaded bankroll from database for /scan', { userId, bankroll });
+      } else {
+        bankroll = 100; // Default fallback
+        logger.debug('No bankroll in database, using default', { userId, bankroll });
+      }
+    } catch (err) {
+      bankroll = 100; // Default fallback on error
+      logger.warn('Could not load bankroll from database, using default', { userId, error: err.message });
+    }
+  }
+  
+  if (!bankroll || typeof bankroll !== 'number' || bankroll < 1) {
+    bankroll = 100; // Final fallback
+  }
+  
   const timezone = userTimezones[userId] || 'America/New_York';
   
   // Check user subscription tier
