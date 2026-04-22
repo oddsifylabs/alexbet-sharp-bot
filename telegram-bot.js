@@ -445,17 +445,13 @@ bot.onText(/\/start/, async (msg) => {
   // Load existing timezone and bankroll from database if available
   try {
     const { data: user } = await supabaseClient.getUser(userId);
-    if (user) {
-      if (user.timezone) {
-        userTimezones[userId] = user.timezone;
-      }
-      if (user.bankroll) {
-        userBankrolls[userId] = user.bankroll;
-        logger.info('Loaded user bankroll from database', { userId, bankroll: user.bankroll });
-      }
+    if (user && user.bankroll) {
+      userBankrolls[userId] = user.bankroll;
+      userTimezones[userId] = user.timezone || 'America/New_York';
+      logger.info('Loaded user data from database', { userId, bankroll: user.bankroll, timezone: user.timezone });
     }
   } catch (err) {
-    logger.debug('Could not load user data:', err.message);
+    logger.debug('Could not load user data from database:', err.message);
   }
   
   // Professional welcome message
