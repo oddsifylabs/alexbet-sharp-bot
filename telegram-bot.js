@@ -16,7 +16,14 @@ const { getSubscriptionDetails, isAdmin: checkIsAdmin } = require('./src/service
 const cron = require('node-cron');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, { polling: false }); // Disable polling initially
+
+// Delay polling start by 45 seconds to allow Telegram to forget old connections
+console.log('⏳ Delaying polling for 45 seconds to reset Telegram connection state...');
+setTimeout(() => {
+  console.log('🚀 Starting bot polling...');
+  bot.startPolling();
+}, 45000);
 
 // Initialize Supabase and payment handlers
 (async () => {
