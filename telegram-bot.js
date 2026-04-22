@@ -1373,28 +1373,6 @@ Ready? /subscribe to purchase!
 console.log('✅ UNIFIED callback handler registered');
 
 // /timezone command (USA only)
-bot.onText(/\/timezone/, (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  // Clear any pending bankroll state
-  if (userBankrolls[userId] === 'awaiting_bankroll') {
-    delete userBankrolls[userId];
-  }
-  
-  console.log(`[/TIMEZONE] User ${userId} requested timezone selection`);
-  
-  bot.sendMessage(chatId, `🇺🇸 Select your US timezone for game times:`, {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: 'EST (New York)', callback_data: 'tz_est' }, { text: 'CST (Chicago)', callback_data: 'tz_cst' }],
-        [{ text: 'MST (Denver)', callback_data: 'tz_mst' }, { text: 'PST (Los Angeles)', callback_data: 'tz_pst' }],
-        [{ text: 'AKST (Alaska)', callback_data: 'tz_akst' }, { text: 'HST (Hawaii)', callback_data: 'tz_hst' }]
-      ]
-    }
-  });
-});
-
 // /help command
 // Export feature - CSV, JSON, PDF (Premium only)
 bot.onText(/\/export/, async (msg) => {
@@ -1668,7 +1646,22 @@ bot.onText(/\/status/, async (msg) => {
     
     const subscriptionDetails = await getSubscriptionDetails(userId);
     
+    // Get current server time (America/Phoenix = MST)
+    const now = new Date();
+    const timeString = now.toLocaleString('en-US', { 
+      timeZone: 'America/Phoenix',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+    
     let statusMsg = '📊 **Your Subscription Status**\n\n';
+    statusMsg += `🕐 **Server Time:** ${timeString} MST\n\n`;
     
     if (subscriptionDetails.tier === 'free') {
       statusMsg += '**Status:** 🆓 Free Tier\n';
