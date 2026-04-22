@@ -1842,39 +1842,38 @@ We're here to help!
 
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `
-📊 AlexBET Sharp Bot - Command Menu
+  const helpMsg = `📊 *AlexBET Sharp Bot - Command Menu*
 
-🔍 SCANNING
-/scan - Find top +EV gems (free: 3 ML, paid: 10-30+)
-/stats - View your performance stats
+🔍 *SCANNING*
+/scan - Find top +EV gems
+/stats - View performance stats
 
-📥 EXPORT (Premium only)
-/export - Export latest scan results
-  ├─ /export_csv - Download as CSV (Excel)
-  ├─ /export_txt - Download as readable text
-  └─ /export_json - Download as JSON
+📥 *EXPORT (Premium)*
+/export - Export scan results
+  • /export_csv - Download as CSV
+  • /export_txt - Download as text
+  • /export_json - Download as JSON
 
-⚙️  SETTINGS
-/timezone - Set US timezone (EST, CST, MST, PST)
+⚙️ *SETTINGS*
 /bankroll - Set betting bankroll
+/status - Check subscription status
 
-💳 PREMIUM
+💳 *PREMIUM*
 /subscribe - View subscription tiers
-/pricing - Detailed pricing & features
+/pricing - Pricing & features
 
-📖 HELP
-/lite - Open AlexBET Lite tracker
+📖 *INFO*
+/lite - AlexBET Lite tracker
 /terms - Terms & Conditions
 /support - Customer support
-/paysupport - Payment issues
 /help - This menu
 
-💡 TIP: Run /scan first, then /export to download results!
+💡 Tip: Run /scan first, then /export!
 
-📱 Full dashboard: https://alexbet-lite.netlify.app
-⭐ Get premium: /subscribe
-  `, { parse_mode: 'Markdown' });
+📱 https://alexbet-lite.netlify.app
+⭐ /subscribe to upgrade`;
+  
+  bot.sendMessage(chatId, helpMsg, { parse_mode: 'Markdown' });
 });
 
 // Cleanup expired subscriptions every hour
