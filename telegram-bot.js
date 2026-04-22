@@ -1229,6 +1229,14 @@ bot.on('message', async (msg) => {
   }
 });
 
+// TEST: Verify callbacks are reaching the bot at all
+bot.on('callback_query', (query) => {
+  console.log(`[TEST HANDLER] 🚀 CALLBACK REACHED TEST HANDLER!`);
+  console.log(`[TEST HANDLER] Data: ${query.data}`);
+  console.log(`[TEST HANDLER] User: ${query.from.id}`);
+  // Don't return - let other handlers process
+});
+
 // UNIFIED CALLBACK QUERY HANDLER - Routes all callbacks based on prefix
 bot.on('callback_query', async (query) => {
   const userId = query.from.id;
