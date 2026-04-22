@@ -3,6 +3,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+
+// v2.1 - Fixed duplicate instance bug
 const ClaudeOptimizer = require('./claude-optimizer');
 const RateLimiter = require('./src/services/rateLimiter');
 const logger = require('./src/utils/logger');
@@ -881,7 +883,7 @@ bot.onText(/\/scan/, async (msg) => {
         
         // Add separator between gems (except after last one)
         if (idx < gemsInSport.length - 1) {
-          msg += `${'═'.repeat(45)}\n\n`;
+          msg += `\`${'─'.repeat(43)}\`\n\n`;
         }
         
         gemCounter++;
