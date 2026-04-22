@@ -1231,9 +1231,12 @@ bot.on('message', async (msg) => {
 
 // TEST: Verify callbacks are reaching the bot at all
 bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
   console.log(`[TEST HANDLER] 🚀 CALLBACK REACHED TEST HANDLER!`);
   console.log(`[TEST HANDLER] Data: ${query.data}`);
   console.log(`[TEST HANDLER] User: ${query.from.id}`);
+  // Send you a message to confirm callback was received
+  bot.sendMessage(chatId, `🔵 **DEBUG**: Callback received!\n\nData: \`${query.data}\``);
   // Don't return - let other handlers process
 });
 console.log('✅ TEST callback handler registered');
