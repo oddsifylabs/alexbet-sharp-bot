@@ -875,8 +875,18 @@ bot.onText(/\/scan/, async (msg) => {
       mainMsg += `📊 ${gem.book} (${gem.booksCompared} books)\n\n`;
     });
     
-    // Send main card
+    // Send main card with gems
     bot.sendMessage(chatId, mainMsg, { parse_mode: 'Markdown' });
+    
+    // Send divider image (optional - if file exists)
+    const dividerPath = path.join(__dirname, '../assets/divider.png');
+    if (fs.existsSync(dividerPath)) {
+      try {
+        bot.sendPhoto(chatId, dividerPath);
+      } catch (err) {
+        logger.warn('Could not send divider image', { error: err.message });
+      }
+    }
     
     // Send footer card asking for CSV export
     const summaryMsg = `\n📥 *EXPORT YOUR PICKS*\n\n` +
