@@ -881,16 +881,16 @@ bot.onText(/\/scan/, async (msg) => {
         const gameDate = gem.gameDate ? gem.gameDate : 'TBD';
         const gameTime = gem.gameTime ? gem.gameTime : 'TBD';
         
-        msg += `#${gemCounter} ${getSportEmoji(gem.sport)} *${gem.betType.toUpperCase()}* | ⚡ +${displayEdge}% | ${confidence}% confidence\n`;
-        msg += `   *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV +${gem.ev}%\n`;
-        msg += `   📍 ${gem.game}\n`;
-        msg += `   📅 ${gameDate} | 🕐 ${gameTime}\n`;
-        msg += `   💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\n`;
-        msg += `   📊 Best: ${gem.book} | 📚 ${gem.booksCompared} books\n`;
+        msg += `#${gemCounter} ${getSportEmoji(gem.sport)} *${gem.betType.toUpperCase()}* | ⚡ +${displayEdge}% | ${confidence}% confidence\\n`;
+        msg += `   *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV +${gem.ev}%\\n`;
+        msg += `   📍 ${gem.game}\\n`;
+        msg += `   📅 ${gameDate} | 🕐 ${gameTime}\\n`;
+        msg += `   💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\\n`;
+        msg += `   📊 Best: ${gem.book} | 📚 ${gem.booksCompared} books\\n`;
         
         // Add separator between gems (except after last one)
         if (idx < gemsInSport.length - 1) {
-          msg += `\`${'─'.repeat(43)}\`\n\n`;
+          msg += `${'━'.repeat(50)}\\n\\n`;
         }
         
         gemCounter++;
