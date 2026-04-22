@@ -489,7 +489,7 @@ Real-time odds, edge detection, CLV tracking
           [{ text: '💰 Update Bankroll ($' + userBankrolls[userId] + ')', callback_data: 'action_bankroll' }],
           [{ text: '⚙️ Settings', callback_data: 'action_settings' }, { text: '💎 Premium', callback_data: 'action_subscribe' }],
           [{ text: '📱 Go to Lite App', url: 'https://alexbet-lite.netlify.app' }],
-          [{ text: '❓ Commands', callback_data: 'action_help' }]
+          [{ text: '📢 Share Bot', url: 'https://t.me/AlexBetSharp_v2_Bot' }, { text: '❓ Commands', callback_data: 'action_help' }]
         ]
       }
     });
@@ -505,7 +505,8 @@ Real-time odds, edge detection, CLV tracking
         inline_keyboard: [
           [{ text: '💵 $50', callback_data: 'bankroll_50' }, { text: '💵 $100', callback_data: 'bankroll_100' }, { text: '💵 $250', callback_data: 'bankroll_250' }],
           [{ text: '💵 $500', callback_data: 'bankroll_500' }, { text: '💵 $1000', callback_data: 'bankroll_1000' }],
-          [{ text: '✏️ Enter Custom Amount', callback_data: 'bankroll_custom' }]
+          [{ text: '✏️ Enter Custom Amount', callback_data: 'bankroll_custom' }],
+          [{ text: '📢 Share with Friends', url: 'https://t.me/AlexBetSharp_v2_Bot' }]
         ]
       }
     });
