@@ -837,9 +837,26 @@ bot.onText(/\/scan/, async (msg) => {
       orderedGems.push(...sportGroups[sport]);
     });
 
-    // Send gems in proper order (by sport → by game time), then summary at end
-    orderedGems.forEach((gem, idx) => {
-      const gemRank = idx + 1;
+    // Calculate summary stats FIRST
+    const topGem = topGems[0];
+    const topGemDisplay = topGem ? `${topGem.pick} @ ${topGem.odds > 0 ? '+' : ''}${topGem.odds}` : 'N/A';
+    
+    const avgEdge = (topGems.reduce((sum, g) => sum + g.edge, 0) / topGems.length).toFixed(2);
+    const avgConfidence = Math.round(topGems.reduce((sum, g) => {
+      const edgeConf = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(g.edge) * 6))));
+      const evBonus = g.ev > 5 ? 8 : g.ev > 2 ? 4 : 0;
+      const consensusBonus = g.booksCompared >= 5 ? 12 : g.booksCompared >= 3 ? 8 : 0;
+      return sum + Math.min(95, edgeConf + evBonus + consensusBonus);
+    }, 0) / topGems.length);
+    
+    // Build SUMMARY CARD at the top
+    let mainMsg = `🎯 *SCAN SUMMARY*\n\n` +
+      `Total Gems: *${gems.length}* | Avg Edge: *+${avgEdge}%* | Confidence: *${avgConfidence}%*\n` +
+      `💰 Moneylines: ${h2hCount} | 📊 Spreads: ${spreadCount} | 📈 Totals: ${totalCount}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // Add all gems to ONE CARD
+    orderedGems.forEach((gem) => {
       const displayEdge = gem.edge;
       const edgeConfidence = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(displayEdge) * 6))));
       const evBonus = gem.ev > 5 ? 8 : gem.ev > 2 ? 4 : 0;
@@ -849,44 +866,22 @@ bot.onText(/\/scan/, async (msg) => {
       const gameDate = gem.gameDate ? gem.gameDate : 'TBD';
       const gameTime = gem.gameTime ? gem.gameTime : 'TBD';
       
-      // One gem per message - logical flow
-      let gemMsg = ``;
-      gemMsg += `#${gemRank} | ${getSportEmoji(gem.sport)} *${gem.betType}*\n`;
-      gemMsg += `\n`;
-      gemMsg += `⚡ Edge: *+${displayEdge}%* | Confidence: *${confidence}%*\n`;
-      gemMsg += `📈 EV: *+${gem.ev}%*\n`;
-      gemMsg += `\n`;
-      gemMsg += `*${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}\n`;
-      gemMsg += `\n`;
-      gemMsg += `${gem.game}\n`;
-      gemMsg += `${gameDate} @ ${gameTime}\n`;
-      gemMsg += `\n`;
-      gemMsg += `💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\n`;
-      gemMsg += `📊 ${gem.book} (${gem.booksCompared} books)\n`;
-      
-      bot.sendMessage(chatId, gemMsg, { parse_mode: 'Markdown' });
+      // Game info at top, then pick details
+      mainMsg += `${gem.game}\n`;
+      mainMsg += `${gameDate} @ ${gameTime}\n\n`;
+      mainMsg += `${getSportEmoji(gem.sport)} *${gem.betType}* → *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}\n`;
+      mainMsg += `⚡ Edge: +${displayEdge}% | 🎯 Confidence: ${confidence}% | 📈 EV: +${gem.ev}%\n`;
+      mainMsg += `💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\n`;
+      mainMsg += `📊 ${gem.book} (${gem.booksCompared} books)\n\n`;
     });
     
-    // Send summary LAST
-    const topGem = topGems[0];
-    const topGemDisplay = topGem ? `${topGem.pick} @ ${topGem.odds > 0 ? '+' : ''}${topGem.odds}` : 'N/A';
+    // Send main card
+    bot.sendMessage(chatId, mainMsg, { parse_mode: 'Markdown' });
     
-    // Calculate summary stats
-    const avgEdge = (topGems.reduce((sum, g) => sum + g.edge, 0) / topGems.length).toFixed(2);
-    const avgConfidence = Math.round(topGems.reduce((sum, g) => {
-      const edgeConf = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(g.edge) * 6))));
-      const evBonus = g.ev > 5 ? 8 : g.ev > 2 ? 4 : 0;
-      const consensusBonus = g.booksCompared >= 5 ? 12 : g.booksCompared >= 3 ? 8 : 0;
-      return sum + Math.min(95, edgeConf + evBonus + consensusBonus);
-    }, 0) / topGems.length);
-    
-    const summaryMsg = `\n\n🎯 *SCAN SUMMARY*\n\n` +
-      `Total Gems: *${gems.length}*\n` +
-      `💰 Moneylines: ${h2hCount} | 📊 Spreads: ${spreadCount} | 📈 Totals: ${totalCount}\n\n` +
-      `⚡ Avg Edge: *+${avgEdge}%*\n` +
-      `🎯 Avg Confidence: *${avgConfidence}%*\n\n` +
-      `🏆 Top Pick: *#1 ${topGemDisplay}*\n\n` +
-      `/export_csv to download all picks`;
+    // Send footer card asking for CSV export
+    const summaryMsg = `\n📥 *EXPORT YOUR PICKS*\n\n` +
+      `Download all scans in CSV format:\n` +
+      `/export_csv`;
     bot.sendMessage(chatId, summaryMsg);
     
     // Store latest gems for export functionality
