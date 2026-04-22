@@ -830,9 +830,9 @@ bot.onText(/\/scan/, async (msg) => {
       });
     });
 
-    // Send summary FIRST
+    // Send summary FIRST - clean header with key metrics
     const topGem = topGems[0];
-    const topGemDisplay = topGem ? `#${topGems.indexOf(topGem) + 1} ${topGem.pick} (+${topGem.claudeEdge || topGem.edge}% edge)` : 'N/A';
+    const topGemDisplay = topGem ? `${topGem.pick} @ ${topGem.odds > 0 ? '+' : ''}${topGem.odds}` : 'N/A';
     
     // Calculate summary stats
     const avgEdge = (topGems.reduce((sum, g) => sum + g.edge, 0) / topGems.length).toFixed(2);
@@ -843,24 +843,13 @@ bot.onText(/\/scan/, async (msg) => {
       return sum + Math.min(95, edgeConf + evBonus + consensusBonus);
     }, 0) / topGems.length);
     
-    const summaryMsg = `✅ *SCAN COMPLETE* — ${gems.length} gems found
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 *BREAKDOWN*
-   💰 ${h2hCount} Moneylines | 📈 ${spreadCount} Spreads | ⬆️ ${totalCount} Totals
-
-📈 *STATS*
-   ⚡ Avg Edge: +${avgEdge}% | 🎯 Avg Confidence: ${avgConfidence}%
-
-🏆 *TOP OPPORTUNITY*
-   ${topGemDisplay}
-
-📥 *NEXT STEPS*
-   • Review detailed gems below (ranked by edge)
-   • /export_csv to download all picks
-   • /subscribe for premium features
-
-🔗 Dashboard: https://alexbet-lite.netlify.app`;
+    const summaryMsg = `🎯 *SHARP SCAN RESULTS*\n\n` +
+      `Total Gems: ${gems.length}\n` +
+      `💰 Moneylines: ${h2hCount} | 📊 Spreads: ${spreadCount} | 📈 Totals: ${totalCount}\n\n` +
+      `⚡ Avg Edge: *+${avgEdge}%*\n` +
+      `🎯 Avg Confidence: *${avgConfidence}%*\n\n` +
+      `🏆 Top Pick: *${topGemDisplay}*\n\n` +
+      `👇 Details below...`;
     bot.sendMessage(chatId, summaryMsg);
 
     // Store latest gems for export functionality
@@ -872,46 +861,41 @@ bot.onText(/\/scan/, async (msg) => {
     };
     logger.info('Scan results stored for export', { userId, gemsCount: topGems.length });
 
-    // Then send sport-grouped gem cards
+    // Then send sport-grouped gem cards - ONE GEM PER MESSAGE for clarity
     let gemCounter = 1;
     Object.keys(sportGroups).forEach(sport => {
       const gemsInSport = sportGroups[sport];
-      let msg = `🏆 *${sport.toUpperCase()}*\n\n`;
       
-      gemsInSport.forEach((gem, idx) => {
-        // ✅ Use math-based edge (more reliable than Claude's vague analysis)
+      gemsInSport.forEach((gem) => {
         const displayEdge = gem.edge;
-        
-        // ✅ Calculate confidence based on:
-        // - Edge strength (higher edge = higher confidence)
-        // - EV strength (validates edge with expected value)
-        // - Consensus quality (more bookmakers = higher confidence)
-        const edgeConfidence = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(displayEdge) * 6)))); // 1% edge = 56%, 5% edge = 80%
+        const edgeConfidence = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(displayEdge) * 6))));
         const evBonus = gem.ev > 5 ? 8 : gem.ev > 2 ? 4 : 0;
         const consensusBonus = gem.booksCompared >= 5 ? 12 : gem.booksCompared >= 3 ? 8 : 0;
-        const confidence = Math.min(95, edgeConfidence + evBonus + consensusBonus); // Confidence formula
+        const confidence = Math.min(95, edgeConfidence + evBonus + consensusBonus);
         
-        // Format date better: "Fri, Apr 19" instead of "04/19"
         const gameDate = gem.gameDate ? gem.gameDate : 'TBD';
         const gameTime = gem.gameTime ? gem.gameTime : 'TBD';
         
-        msg += `\\n#${gemCounter} ${getSportEmoji(gem.sport)} *${gem.betType.toUpperCase()}*\\n`;
-        msg += `⚡ +${displayEdge}% edge | 🎯 ${confidence}% confidence\\n`;
-        msg += `🏀 *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds} | EV: +${gem.ev}%\\n`;
-        msg += `📍 ${gem.game}\\n`;
-        msg += `📅 ${gameDate} | 🕐 ${gameTime}\\n`;
-        msg += `💰 Kelly $${gem.kelly} | Conservative $${gem.conservative.two}\\n`;
-        msg += `📊 ${gem.book} (${gem.booksCompared} books)\\n`;
+        // One gem per message - clean, scannable format
+        let gemMsg = ``;
+        gemMsg += `#${gemCounter} | ${getSportEmoji(gem.sport)} *${gem.betType}*\n`;
+        gemMsg += `\n`;
+        gemMsg += `*${gem.pick}*\n`;
+        gemMsg += `${gem.odds > 0 ? '+' : ''}${gem.odds}\n`;
+        gemMsg += `\n`;
+        gemMsg += `⚡ *Edge:* +${displayEdge}%\n`;
+        gemMsg += `📈 *EV:* +${gem.ev}%\n`;
+        gemMsg += `🎯 *Confidence:* ${confidence}%\n`;
+        gemMsg += `\n`;
+        gemMsg += `${gem.game}\n`;
+        gemMsg += `${gameDate} @ ${gameTime}\n`;
+        gemMsg += `\n`;
+        gemMsg += `💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\n`;
+        gemMsg += `📊 ${gem.book} (${gem.booksCompared} books)\n`;
         
-        // Add separator between gems (except after last one)
-        if (idx < gemsInSport.length - 1) {
-          msg += `\\n────────────────────────────────────────────────\\n`;
-        }
-        
+        bot.sendMessage(chatId, gemMsg, { parse_mode: 'Markdown' });
         gemCounter++;
       });
-      
-      bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
     });
   } catch (err) {
     logger.error('Scan execution failed', {
