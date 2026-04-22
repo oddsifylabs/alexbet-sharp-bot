@@ -852,7 +852,7 @@ bot.onText(/\/scan/, async (msg) => {
     // Build SUMMARY CARD at the top
     let mainMsg = `🎯 *SCAN SUMMARY*\n\n` +
       `Total Gems: *${gems.length}* | Avg Edge: *+${avgEdge}%* | Confidence: *${avgConfidence}%*\n` +
-      `💰 Moneylines: ${h2hCount} | 📊 Spreads: ${spreadCount} | 📈 Totals: ${totalCount}\n\n` +
+      `💰 Moneylines: ${h2hCount} | 📊 Spreads: ${spreadCount} | 📈 Totals: ${totalCount}\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     
     // Add all gems to ONE CARD
