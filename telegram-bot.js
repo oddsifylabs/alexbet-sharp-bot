@@ -1236,6 +1236,7 @@ bot.on('callback_query', (query) => {
   console.log(`[TEST HANDLER] User: ${query.from.id}`);
   // Don't return - let other handlers process
 });
+console.log('✅ TEST callback handler registered');
 
 // UNIFIED CALLBACK QUERY HANDLER - Routes all callbacks based on prefix
 bot.on('callback_query', async (query) => {
@@ -1366,6 +1367,7 @@ Ready? /subscribe to purchase!
     bot.answerCallbackQuery(query.id, { text: '❌ Error processing action', show_alert: true });
   }
 });
+console.log('✅ UNIFIED callback handler registered');
 
 // /timezone command (USA only)
 bot.onText(/\/timezone/, (msg) => {
