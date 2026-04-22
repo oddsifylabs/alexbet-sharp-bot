@@ -915,7 +915,7 @@ bot.onText(/\/scan/, async (msg) => {
 });
 
 // /stats and /stat commands
-bot.onText(/\/stats?/, (msg) => {
+bot.onText(/^\/stats?\b/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, `
 *📊 Your Stats*
