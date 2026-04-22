@@ -830,7 +830,37 @@ bot.onText(/\/scan/, async (msg) => {
       });
     });
 
-    // Send summary FIRST - clean header with key metrics
+    // Send gems FIRST in topGems order (ranked by edge), then summary at end
+    topGems.forEach((gem, idx) => {
+      const gemRank = idx + 1;
+      const displayEdge = gem.edge;
+      const edgeConfidence = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(displayEdge) * 6))));
+      const evBonus = gem.ev > 5 ? 8 : gem.ev > 2 ? 4 : 0;
+      const consensusBonus = gem.booksCompared >= 5 ? 12 : gem.booksCompared >= 3 ? 8 : 0;
+      const confidence = Math.min(95, edgeConfidence + evBonus + consensusBonus);
+      
+      const gameDate = gem.gameDate ? gem.gameDate : 'TBD';
+      const gameTime = gem.gameTime ? gem.gameTime : 'TBD';
+      
+      // One gem per message - logical flow
+      let gemMsg = ``;
+      gemMsg += `#${gemRank} | ${getSportEmoji(gem.sport)} *${gem.betType}*\n`;
+      gemMsg += `\n`;
+      gemMsg += `⚡ Edge: *+${displayEdge}%* | Confidence: *${confidence}%*\n`;
+      gemMsg += `📈 EV: *+${gem.ev}%*\n`;
+      gemMsg += `\n`;
+      gemMsg += `*${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}\n`;
+      gemMsg += `\n`;
+      gemMsg += `${gem.game}\n`;
+      gemMsg += `${gameDate} @ ${gameTime}\n`;
+      gemMsg += `\n`;
+      gemMsg += `💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\n`;
+      gemMsg += `📊 ${gem.book} (${gem.booksCompared} books)\n`;
+      
+      bot.sendMessage(chatId, gemMsg, { parse_mode: 'Markdown' });
+    });
+    
+    // Send summary LAST
     const topGem = topGems[0];
     const topGemDisplay = topGem ? `${topGem.pick} @ ${topGem.odds > 0 ? '+' : ''}${topGem.odds}` : 'N/A';
     
@@ -843,15 +873,15 @@ bot.onText(/\/scan/, async (msg) => {
       return sum + Math.min(95, edgeConf + evBonus + consensusBonus);
     }, 0) / topGems.length);
     
-    const summaryMsg = `🎯 *SHARP SCAN RESULTS*\n\n` +
-      `Total Gems: ${gems.length}\n` +
+    const summaryMsg = `\n\n🎯 *SCAN SUMMARY*\n\n` +
+      `Total Gems: *${gems.length}*\n` +
       `💰 Moneylines: ${h2hCount} | 📊 Spreads: ${spreadCount} | 📈 Totals: ${totalCount}\n\n` +
       `⚡ Avg Edge: *+${avgEdge}%*\n` +
       `🎯 Avg Confidence: *${avgConfidence}%*\n\n` +
-      `🏆 Top Pick: *${topGemDisplay}*\n\n` +
-      `👇 Details below...`;
+      `🏆 Top Pick: *#1 ${topGemDisplay}*\n\n` +
+      `/export_csv to download all picks`;
     bot.sendMessage(chatId, summaryMsg);
-
+    
     // Store latest gems for export functionality
     userLatestScans[userId] = {
       gems: topGems,
@@ -860,44 +890,6 @@ bot.onText(/\/scan/, async (msg) => {
       date: new Date().toISOString()
     };
     logger.info('Scan results stored for export', { userId, gemsCount: topGems.length });
-
-    // Then send sport-grouped gem cards - ONE GEM PER MESSAGE for clarity
-    Object.keys(sportGroups).forEach(sport => {
-      const gemsInSport = sportGroups[sport];
-      
-      gemsInSport.forEach((gem) => {
-        const displayEdge = gem.edge;
-        const edgeConfidence = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(displayEdge) * 6))));
-        const evBonus = gem.ev > 5 ? 8 : gem.ev > 2 ? 4 : 0;
-        const consensusBonus = gem.booksCompared >= 5 ? 12 : gem.booksCompared >= 3 ? 8 : 0;
-        const confidence = Math.min(95, edgeConfidence + evBonus + consensusBonus);
-        
-        const gameDate = gem.gameDate ? gem.gameDate : 'TBD';
-        const gameTime = gem.gameTime ? gem.gameTime : 'TBD';
-        
-        // Find the gem's rank in topGems for consistent numbering
-        const gemRank = topGems.findIndex(g => g.pick === gem.pick && g.odds === gem.odds && g.game === gem.game) + 1;
-        
-        // One gem per message - clean, scannable format
-        let gemMsg = ``;
-        gemMsg += `#${gemRank} | ${getSportEmoji(gem.sport)} *${gem.betType}*\n`;
-        gemMsg += `\n`;
-        gemMsg += `*${gem.pick}*\n`;
-        gemMsg += `${gem.odds > 0 ? '+' : ''}${gem.odds}\n`;
-        gemMsg += `\n`;
-        gemMsg += `⚡ *Edge:* +${displayEdge}%\n`;
-        gemMsg += `📈 *EV:* +${gem.ev}%\n`;
-        gemMsg += `🎯 *Confidence:* ${confidence}%\n`;
-        gemMsg += `\n`;
-        gemMsg += `${gem.game}\n`;
-        gemMsg += `${gameDate} @ ${gameTime}\n`;
-        gemMsg += `\n`;
-        gemMsg += `💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\n`;
-        gemMsg += `📊 ${gem.book} (${gem.booksCompared} books)\n`;
-        
-        bot.sendMessage(chatId, gemMsg, { parse_mode: 'Markdown' });
-      });
-    });
   } catch (err) {
     logger.error('Scan execution failed', {
       userId,
