@@ -4,7 +4,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-// v2.1 - Fixed duplicate instance bug
+// v2.2 - Complete cache clear and instance restart
 const ClaudeOptimizer = require('./claude-optimizer');
 const RateLimiter = require('./src/services/rateLimiter');
 const logger = require('./src/utils/logger');
