@@ -830,8 +830,15 @@ bot.onText(/\/scan/, async (msg) => {
       });
     });
 
-    // Send gems FIRST in topGems order (ranked by edge), then summary at end
-    topGems.forEach((gem, idx) => {
+    // Flatten sport groups back to ordered array, maintaining sport grouping + time order
+    const orderedGems = [];
+    const sortedSports = Object.keys(sportGroups).sort();
+    sortedSports.forEach(sport => {
+      orderedGems.push(...sportGroups[sport]);
+    });
+
+    // Send gems in proper order (by sport → by game time), then summary at end
+    orderedGems.forEach((gem, idx) => {
       const gemRank = idx + 1;
       const displayEdge = gem.edge;
       const edgeConfidence = Math.min(90, Math.max(35, Math.round(50 + (Math.abs(displayEdge) * 6))));
