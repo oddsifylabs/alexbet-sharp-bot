@@ -45,14 +45,14 @@ function isAdmin(userId) {
 // Wrapped in try-catch to prevent crash if Telegram API has issues
 try {
   bot.setMyCommands([
-    { command: 'start', description: 'Initialize bot with bankroll' },
-    { command: 'scan', description: 'Find top 5 gems (6 sports × 3 markets)' },
+    { command: 'start', description: 'Initialize bot' },
+    { command: 'scan', description: 'Find +EV gems across 6 sports' },
     { command: 'stats', description: 'View your performance stats' },
-    { command: 'export', description: 'Export bets (CSV, JSON, PDF)' },
-    { command: 'timezone', description: 'Set your US timezone' },
+    { command: 'export', description: 'Export scan results (CSV/JSON)' },
     { command: 'subscribe', description: 'Upgrade to paid tier' },
-    { command: 'status', description: 'Check your subscription status' },
-    { command: 'lite', description: 'Go to ALexBET Lite tracker' },
+    { command: 'status', description: 'Check subscription status' },
+    { command: 'bankroll', description: 'Set your betting bankroll' },
+    { command: 'lite', description: 'Open AlexBET Lite tracker' },
     { command: 'help', description: 'Show all commands' }
   ]).catch(err => {
     console.warn('[WARN] setMyCommands failed (non-critical):', err.message);
@@ -1891,6 +1891,19 @@ cron.schedule('0 * * * *', async () => {
 // Error handling
 bot.on('polling_error', (err) => {
   console.error('[POLLING_ERROR]', err.message);
+});
+
+// Graceful shutdown handlers
+process.on('SIGTERM', () => {
+  console.log('[SHUTDOWN] SIGTERM received, stopping bot...');
+  bot.stopPolling();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('[SHUTDOWN] SIGINT received, stopping bot...');
+  bot.stopPolling();
+  process.exit(0);
 });
 
 console.log('✅ Bot running with Whop payment integration...');
