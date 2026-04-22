@@ -892,7 +892,7 @@ bot.onText(/\/scan/, async (msg) => {
         
         // Add separator between gems (except after last one)
         if (idx < gemsInSport.length - 1) {
-          msg += `\\n${'━'.repeat(50)}\\n`;
+          msg += `\\n${'─'.repeat(48)}\\n`;
         }
         
         gemCounter++;
