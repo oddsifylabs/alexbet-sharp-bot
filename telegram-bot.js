@@ -61,6 +61,7 @@ try {
     { command: 'subscribe', description: 'Upgrade to paid tier' },
     { command: 'status', description: 'Check subscription status' },
     { command: 'bankroll', description: 'Set your betting bankroll' },
+    { command: 'timezone', description: 'Set timezone (EST/CST/MST/PST)' },
     { command: 'lite', description: 'Open AlexBET Lite tracker' },
     { command: 'help', description: 'Show all commands' }
   ]).catch(err => {
@@ -454,13 +455,34 @@ bot.onText(/\/start/, async (msg) => {
   // Load existing timezone and bankroll from database if available
   try {
     const { data: user } = await supabaseClient.getUser(userId);
-    if (user && user.bankroll) {
-      userBankrolls[userId] = user.bankroll;
-      userTimezones[userId] = user.timezone || 'America/New_York';
-      logger.info('Loaded user data from database', { userId, bankroll: user.bankroll, timezone: user.timezone });
+    if (user) {
+      // Load bankroll if available
+      if (user.bankroll) {
+        userBankrolls[userId] = user.bankroll;
+      }
+      
+      // FIX: Load timezone INDEPENDENTLY of bankroll
+      if (user.timezone) {
+        userTimezones[userId] = user.timezone;
+        logger.info('Loaded timezone from database', { userId, timezone: user.timezone });
+      } else {
+        // Set default timezone for new users
+        userTimezones[userId] = 'America/New_York';
+      }
+      
+      logger.info('Loaded user data from database', { 
+        userId, 
+        bankroll: user.bankroll || 'not set', 
+        timezone: user.timezone || 'default (America/New_York)'
+      });
+    } else {
+      // New user - set default timezone
+      userTimezones[userId] = 'America/New_York';
     }
   } catch (err) {
     logger.debug('Could not load user data from database:', err.message);
+    // Set default timezone even if database fails
+    userTimezones[userId] = 'America/New_York';
   }
   
   // Professional welcome message
@@ -622,6 +644,31 @@ async function retryWithBackoff(fn, maxAttempts = 3, initialDelay = 1000) {
   
   // All attempts failed
   throw new Error(`Failed after ${maxAttempts} attempts: ${lastError.message}`);
+}
+
+// FIX #5: Safe date/time parser for sorting
+function parseDateTimeString(dateStr, timeStr) {
+  // dateStr format: "MM/DD/YY" (e.g., "04/22/26")
+  // timeStr format: "HH:MM AM/PM" (e.g., "02:30 PM")
+  // Convert to ISO datetime for proper parsing
+  
+  const [month, day, year] = dateStr.split('/');
+  // Handle 2-digit year: 00-30 = 2000-2030, 31-99 = 1931-1999
+  const yearFull = parseInt(year) <= 30 ? `20${year}` : `19${year}`;
+  
+  // Parse 12-hour time to 24-hour format
+  let [hours, minutes] = timeStr.split(' ')[0].split(':');
+  const period = timeStr.split(' ')[1]; // 'AM' or 'PM'
+  
+  hours = parseInt(hours);
+  if (period === 'PM' && hours !== 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  
+  hours = String(hours).padStart(2, '0');
+  
+  // Construct ISO datetime string (local time, not UTC)
+  const isoString = `${yearFull}-${month}-${day}T${hours}:${minutes}:00`;
+  return new Date(isoString);
 }
 
 // /scan command with Claude AI edge detection
@@ -824,9 +871,29 @@ bot.onText(/\/scan/, async (msg) => {
     // Sort each sport group by game time (ascending)
     Object.keys(sportGroups).forEach(sport => {
       sportGroups[sport].sort((a, b) => {
-        const timeA = new Date(a.gameDate + ' ' + a.gameTime);
-        const timeB = new Date(b.gameDate + ' ' + b.gameTime);
-        return timeA - timeB;
+        try {
+          const timeA = parseDateTimeString(a.gameDate, a.gameTime);
+          const timeB = parseDateTimeString(b.gameDate, b.gameTime);
+          
+          // Handle parsing errors
+          if (isNaN(timeA.getTime()) || isNaN(timeB.getTime())) {
+            console.warn('[SORT WARNING] Invalid date parsing for', { 
+              a: `${a.gameDate} ${a.gameTime}`, 
+              b: `${b.gameDate} ${b.gameTime}` 
+            });
+            return 0; // Don't change order if parsing fails
+          }
+          
+          return timeA - timeB;
+        } catch (err) {
+          console.error('[SORT ERROR]', err.message, { 
+            aDate: a.gameDate, 
+            aTime: a.gameTime,
+            bDate: b.gameDate,
+            bTime: b.gameTime
+          });
+          return 0; // Don't change order on error
+        }
       });
     });
 
@@ -1262,6 +1329,42 @@ bot.on('message', async (msg) => {
   }
 });
 
+// /timezone command (USA only)
+bot.onText(/\/timezone/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  
+  try {
+    const currentTz = userTimezones[userId] || 'America/New_York';
+    const tzDisplayMap = {
+      'America/New_York': 'EST (New York)',
+      'America/Chicago': 'CST (Chicago)',
+      'America/Denver': 'MST (Denver)',
+      'America/Los_Angeles': 'PST (Los Angeles)',
+      'America/Anchorage': 'AKST (Alaska)',
+      'Pacific/Honolulu': 'HST (Hawaii)'
+    };
+    
+    const currentDisplay = tzDisplayMap[currentTz] || currentTz;
+    
+    logger.info('User accessed /timezone command', { userId, currentTz });
+    
+    bot.sendMessage(chatId, `🌍 *Select Your Timezone*\n\nCurrent: **${currentDisplay}**\n\nChoose your US timezone:`, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'EST (New York)', callback_data: 'tz_est' }, { text: 'CST (Chicago)', callback_data: 'tz_cst' }],
+          [{ text: 'MST (Denver)', callback_data: 'tz_mst' }, { text: 'PST (Los Angeles)', callback_data: 'tz_pst' }],
+          [{ text: 'AKST (Alaska)', callback_data: 'tz_akst' }, { text: 'HST (Hawaii)', callback_data: 'tz_hst' }]
+        ]
+      }
+    });
+  } catch (err) {
+    logger.error('Error in /timezone command:', err);
+    bot.sendMessage(chatId, '❌ Error loading timezone settings. Please try again.');
+  }
+});
+
 // TEST: Verify callbacks are reaching the bot at all
 bot.on('callback_query', (query) => {
   const chatId = query.message.chat.id;
@@ -1298,7 +1401,19 @@ bot.on('callback_query', async (query) => {
         await bot.answerCallbackQuery(query.id, '⏳ Setting timezone...', false);
         console.log(`[TZ] ✅ Answered callback query`);
         
-        // Send confirmation message  
+        // FIX: Map UI shortcuts to IANA timezone strings
+        const timezoneMap = {
+          'tz_est': 'America/New_York',
+          'tz_cst': 'America/Chicago',
+          'tz_mst': 'America/Denver',
+          'tz_pst': 'America/Los_Angeles',
+          'tz_akst': 'America/Anchorage',
+          'tz_hst': 'Pacific/Honolulu'
+        };
+        
+        const ianaTimezone = timezoneMap[data] || 'America/New_York';
+        
+        // Send confirmation message with display name
         const tzName = data === 'tz_mst' ? 'MST (Denver)' : 
                        data === 'tz_est' ? 'EST (New York)' :
                        data === 'tz_cst' ? 'CST (Chicago)' :
@@ -1306,8 +1421,32 @@ bot.on('callback_query', async (query) => {
                        data === 'tz_akst' ? 'AKST (Alaska)' :
                        data === 'tz_hst' ? 'HST (Hawaii)' : data;
         
+        // FIX: UPDATE userTimezones in memory
+        userTimezones[userId] = ianaTimezone;
+        console.log(`[TZ] Updated userTimezones[${userId}] = ${ianaTimezone}`);
+        
+        // FIX: UPDATE database
+        try {
+          await supabaseClient.upsertUser(userId, query.from.username || `user_${userId}`);
+          const { error } = await supabaseClient.supabase
+            .from('users')
+            .update({ timezone: ianaTimezone, updated_at: new Date() })
+            .eq('telegram_id', userId);
+          
+          if (!error) {
+            console.log(`[TZ] Saved timezone to database: ${ianaTimezone}`);
+            logger.info('Timezone saved to database', { userId, timezone: ianaTimezone });
+          } else {
+            console.warn(`[TZ] Database error:`, error.message);
+            logger.warn('Failed to save timezone to database', { userId, error: error.message });
+          }
+        } catch (dbErr) {
+          console.warn(`[TZ] Database save failed, using in-memory only:`, dbErr.message);
+          logger.warn('Exception saving timezone to database', { userId, error: dbErr.message });
+        }
+        
         console.log(`[TZ] About to send confirmation message to ${chatId}: ${tzName}`);
-        await bot.sendMessage(chatId, `✅ **Timezone Set**\n\nYou are now using: **${tzName}**`);
+        await bot.sendMessage(chatId, `✅ **Timezone Set**\\n\\nYou are now using: **${tzName}** (${ianaTimezone})`);
         console.log(`[TZ] ✅ Sent confirmation message`);
       } catch (err) {
         console.error(`[TZ ERROR] Exception caught: ${err.message}`);
@@ -1365,6 +1504,41 @@ bot.on('callback_query', async (query) => {
   }
   
   // ========== ACTION CALLBACKS (action_*) ==========
+  if (data === 'action_settings') {
+    bot.answerCallbackQuery(query.id);
+    
+    try {
+      const currentTz = userTimezones[userId] || 'America/New_York';
+      const tzDisplayMap = {
+        'America/New_York': 'EST (New York)',
+        'America/Chicago': 'CST (Chicago)',
+        'America/Denver': 'MST (Denver)',
+        'America/Los_Angeles': 'PST (Los Angeles)',
+        'America/Anchorage': 'AKST (Alaska)',
+        'Pacific/Honolulu': 'HST (Hawaii)'
+      };
+      
+      const currentDisplay = tzDisplayMap[currentTz] || currentTz;
+      
+      logger.info('User accessed settings', { userId, currentTz });
+      
+      bot.sendMessage(chatId, `⚙️ *Settings*\n\n🌍 **Current Timezone:** ${currentDisplay}\n\nSelect new timezone:`, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: 'EST (New York)', callback_data: 'tz_est' }, { text: 'CST (Chicago)', callback_data: 'tz_cst' }],
+            [{ text: 'MST (Denver)', callback_data: 'tz_mst' }, { text: 'PST (Los Angeles)', callback_data: 'tz_pst' }],
+            [{ text: 'AKST (Alaska)', callback_data: 'tz_akst' }, { text: 'HST (Hawaii)', callback_data: 'tz_hst' }]
+          ]
+        }
+      });
+    } catch (err) {
+      logger.error('Error in action_settings handler', { userId, error: err.message });
+      bot.sendMessage(chatId, '❌ Error loading settings. Please try again.');
+    }
+    return;
+  }
+  
   if (data === 'action_scan') {
     bot.answerCallbackQuery(query.id);
     // Action scan logic here (truncated for brevity)
