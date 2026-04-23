@@ -9,17 +9,25 @@ const supabaseClient = require('../services/supabase-client');
 const { getSubscriptionDetails } = require('../services/auth');
 const { exportToCSV, exportToTXT, exportToJSON } = require('../utils/export-handler');
 
-let bot, isAdmin, userLatestScans;
+let bot, isAdmin, userLatestScans, exportLimiter;
 
-function setContext(botInstance, isAdminFn, latestScans) {
+function setContext(botInstance, isAdminFn, latestScans, limiter) {
   bot = botInstance;
   isAdmin = isAdminFn;
   userLatestScans = latestScans;
+  exportLimiter = limiter;
 }
 
 async function handleExport(msg) {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+
+  // CHECK RATE LIMIT FIRST
+  const rateLimitResult = exportLimiter.isRateLimited(userId);
+  if (rateLimitResult.limited) {
+    const msg_text = `⏳ Too many exports. You have 5 exports per minute.\n\nTry again in ${rateLimitResult.secondsLeft}s`;
+    return bot.sendMessage(chatId, msg_text);
+  }
 
   try {
     // Admins bypass subscription check
@@ -27,7 +35,7 @@ async function handleExport(msg) {
       const subscription = await getSubscriptionDetails(userId);
       
       if (!subscription.export) {
-        bot.sendMessage(chatId, `❌ Export feature is premium only.\n\n/subscribe to unlock:\n  • Unlimited gems\n  • CSV/JSON/PDF export\n  • Full market access (Spreads, Totals)\n  • Advanced statistics`);
+        bot.sendMessage(chatId, `❌ Export feature is premium only.\\n\\n/subscribe to unlock:\\n  • Unlimited gems\\n  • CSV/JSON/PDF export\\n  • Full market access (Spreads, Totals)\\n  • Advanced statistics`);
         return;
       }
     }
@@ -38,11 +46,11 @@ async function handleExport(msg) {
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export the results.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export the results.`);
       return;
     }
 
-    const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_csv - Download as CSV (Excel)\n/export_txt - Download as TXT (readable)\n/export_json - Download as JSON (backup)`;
+    const message = `📊 Export Your Latest Scan\\n\\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\\n\\nChoose format:\\n\\n/export_csv - Download as CSV (Excel)\\n/export_txt - Download as TXT (readable)\\n/export_json - Download as JSON (backup)`;
     bot.sendMessage(chatId, message);
   } catch (err) {
     logger.error('Error in /export:', err);
@@ -54,12 +62,19 @@ async function handleExportCSV(msg) {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
+  // CHECK RATE LIMIT FIRST
+  const rateLimitResult = exportLimiter.isRateLimited(userId);
+  if (rateLimitResult.limited) {
+    const msg_text = `⏳ Too many exports. You have 5 exports per minute.\n\nTry again in ${rateLimitResult.secondsLeft}s`;
+    return bot.sendMessage(chatId, msg_text);
+  }
+
   try {
     // Check subscription (admins bypass)
     if (!isAdmin(userId)) {
       const subscription = await getSubscriptionDetails(userId);
       if (!subscription.export) {
-        bot.sendMessage(chatId, `❌ CSV export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
+        bot.sendMessage(chatId, `❌ CSV export is premium only.\\n\\n/subscribe to unlock CSV, JSON, and PDF exports`);
         return;
       }
     }
@@ -67,7 +82,7 @@ async function handleExportCSV(msg) {
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export.`);
       return;
     }
 
@@ -107,7 +122,7 @@ async function handleExportCSV(msg) {
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📊 CSV Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported`,
+      caption: `📊 CSV Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`,
       filename: result.filename
     }, (err) => {
       if (err) {
@@ -127,12 +142,19 @@ async function handleExportTXT(msg) {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
+  // CHECK RATE LIMIT FIRST
+  const rateLimitResult = exportLimiter.isRateLimited(userId);
+  if (rateLimitResult.limited) {
+    const msg_text = `⏳ Too many exports. You have 5 exports per minute.\n\nTry again in ${rateLimitResult.secondsLeft}s`;
+    return bot.sendMessage(chatId, msg_text);
+  }
+
   try {
     // Check subscription (admins bypass)
     if (!isAdmin(userId)) {
       const subscription = await getSubscriptionDetails(userId);
       if (!subscription.export) {
-        bot.sendMessage(chatId, `❌ Text export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
+        bot.sendMessage(chatId, `❌ Text export is premium only.\\n\\n/subscribe to unlock CSV, JSON, and PDF exports`);
         return;
       }
     }
@@ -140,7 +162,7 @@ async function handleExportTXT(msg) {
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export.`);
       return;
     }
 
@@ -182,7 +204,7 @@ async function handleExportTXT(msg) {
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📋 TXT Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported`,
+      caption: `📋 TXT Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`,
       filename: result.filename
     }, (err) => {
       if (err) {
@@ -202,12 +224,19 @@ async function handleExportJSON(msg) {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
+  // CHECK RATE LIMIT FIRST
+  const rateLimitResult = exportLimiter.isRateLimited(userId);
+  if (rateLimitResult.limited) {
+    const msg_text = `⏳ Too many exports. You have 5 exports per minute.\n\nTry again in ${rateLimitResult.secondsLeft}s`;
+    return bot.sendMessage(chatId, msg_text);
+  }
+
   try {
     // Check subscription (admins bypass)
     if (!isAdmin(userId)) {
       const subscription = await getSubscriptionDetails(userId);
       if (!subscription.export) {
-        bot.sendMessage(chatId, `❌ JSON export is premium only.\n\n/subscribe to unlock CSV, JSON, and PDF exports`);
+        bot.sendMessage(chatId, `❌ JSON export is premium only.\\n\\n/subscribe to unlock CSV, JSON, and PDF exports`);
         return;
       }
     }
@@ -215,7 +244,7 @@ async function handleExportJSON(msg) {
     // Check if user has recent scan
     const userScans = userLatestScans[userId];
     if (!userScans || !userScans.gems || userScans.gems.length === 0) {
-      bot.sendMessage(chatId, `❌ No recent scan found.\n\nRun /scan first, then export.`);
+      bot.sendMessage(chatId, `❌ No recent scan found.\\n\\nRun /scan first, then export.`);
       return;
     }
 
@@ -255,7 +284,7 @@ async function handleExportJSON(msg) {
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📄 JSON Export\n\n📥 File: ${result.filename}\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\n✅ ${result.gemsCount} gems exported (with metadata)`,
+      caption: `📄 JSON Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported (with metadata)`,
       filename: result.filename
     }, (err) => {
       if (err) {

@@ -7,17 +7,25 @@ const logger = require('../utils/logger');
 const supabaseClient = require('../services/supabase-client');
 const { validateBankroll } = require('../utils/validation');
 
-let bot, userBankrolls;
+let bot, userBankrolls, bankrollLimiter;
 
-function setContext(botInstance, bankrolls) {
+function setContext(botInstance, bankrolls, limiter) {
   bot = botInstance;
   userBankrolls = bankrolls;
+  bankrollLimiter = limiter;
 }
 
 async function handleBankroll(msg, match) {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const inlineAmount = match[1]; // Extract /bankroll 500
+  
+  // CHECK RATE LIMIT FIRST
+  const rateLimitResult = bankrollLimiter.isRateLimited(userId);
+  if (rateLimitResult.limited) {
+    const msg_text = `⏳ Rate limited. Try again in ${rateLimitResult.secondsLeft}s`;
+    return bot.sendMessage(chatId, msg_text);
+  }
   
   const currentBankroll = userBankrolls[userId] && typeof userBankrolls[userId] === 'number' 
     ? userBankrolls[userId] 
@@ -45,14 +53,14 @@ async function handleBankroll(msg, match) {
       
       if (!error) {
         logger.info('Bankroll set inline', { userId, bankroll: validation.value, chatId });
-        bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value}\n\nNow use /scan to find gems!`);
+        bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value}\\n\\nNow use /scan to find gems!`);
       } else {
         logger.warn('Could not save bankroll to database:', error.message);
-        bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value} (local only)\n\nNow use /scan to find gems!`);
+        bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value} (local only)\\n\\nNow use /scan to find gems!`);
       }
     } catch (err) {
       logger.warn('Error saving bankroll:', err.message);
-      bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value}\n\nNow use /scan to find gems!`);
+      bot.sendMessage(chatId, `✅ Bankroll set to $${validation.value}\\n\\nNow use /scan to find gems!`);
     }
     return;
   }

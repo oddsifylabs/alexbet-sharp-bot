@@ -130,12 +130,20 @@ if (process.env.ANTHROPIC_API_KEY) {
 
 // Initialize rate limiters
 // scanLimiter: 10 requests per minute per user
-// apiRetryLimiter: Track API failures for adaptive backoff
+// exportLimiter: 5 requests per minute (more expensive operation)
+// statsLimiter: 20 requests per minute (cheap)
+// bankrollLimiter: 5 requests per minute (config operation)
 const scanLimiter = new RateLimiter(10, 60000); // 10 req/min
+const exportLimiter = new RateLimiter(5, 60000); // 5 req/min
+const statsLimiter = new RateLimiter(20, 60000); // 20 req/min
+const bankrollLimiter = new RateLimiter(5, 60000); // 5 req/min
 const apiErrorTracker = new Map(); // userId -> {count, resetTime}
 
 logger.info('Rate limiters initialized', {
   scanLimit: '10 requests per 60 seconds',
+  exportLimit: '5 requests per 60 seconds',
+  statsLimit: '20 requests per 60 seconds',
+  bankrollLimit: '5 requests per 60 seconds',
   purpose: 'Prevent abuse and track API failures'
 });
 
@@ -167,8 +175,9 @@ console.log('🤖 AlexBET Sharp Bot starting (h2h + spreads + totals)...');
 // Initialize handler contexts
 startHandler.setContext(bot, isAdmin, userBankrolls, userTimezones);
 scanHandler.setContext(bot, isAdmin, userBankrolls, userTimezones, scanLimiter, claudeOptimizer, userLatestScans);
-exportHandler.setContext(bot, isAdmin, userLatestScans);
-bankrollHandler.setContext(bot, userBankrolls);
+exportHandler.setContext(bot, isAdmin, userLatestScans, exportLimiter);
+statsHandler.setContext(bot, statsLimiter);
+bankrollHandler.setContext(bot, userBankrolls, bankrollLimiter);
 timezoneHandler.setContext(bot, userTimezones);
 utilsCommands.setContext(bot);
 callbackHandlers.setContext(bot, userBankrolls, userTimezones);
