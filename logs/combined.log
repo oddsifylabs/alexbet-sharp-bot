@@ -19,3 +19,12 @@
 {"level":"info","maxRequests":10,"message":"RateLimiter initialized","service":"alexbet-bot","timestamp":"2026-04-19 10:44:10","windowMs":60000,"windowSeconds":60}
 {"level":"info","message":"Rate limiters initialized","purpose":"Prevent abuse and track API failures","scanLimit":"10 requests per 60 seconds","service":"alexbet-bot","timestamp":"2026-04-19 10:44:10"}
 {"level":"info","message":"✅ Supabase tables verified","service":"alexbet-bot","timestamp":"2026-04-19 10:44:10"}
+{"level":"info","message":"Whop payment handlers registered","service":"alexbet-bot","timestamp":"2026-04-23 06:54:36"}
+{"level":"info","maxRequests":10,"message":"RateLimiter initialized","service":"alexbet-bot","timestamp":"2026-04-23 06:54:36","windowMs":60000,"windowSeconds":60}
+{"level":"info","message":"Rate limiters initialized","purpose":"Prevent abuse and track API failures","scanLimit":"10 requests per 60 seconds","service":"alexbet-bot","timestamp":"2026-04-23 06:54:36"}
+{"level":"info","message":"✅ Supabase tables verified","service":"alexbet-bot","timestamp":"2026-04-23 06:54:37"}
+{"level":"warn","message":"⚠️ Supabase credentials not configured - subscriptions will not persist on restart","service":"alexbet-bot","timestamp":"2026-04-23 06:55:14"}
+{"level":"info","message":"Whop payment handlers registered","service":"alexbet-bot","timestamp":"2026-04-23 06:55:21"}
+{"level":"info","maxRequests":10,"message":"RateLimiter initialized","service":"alexbet-bot","timestamp":"2026-04-23 06:55:21","windowMs":60000,"windowSeconds":60}
+{"level":"info","message":"Rate limiters initialized","purpose":"Prevent abuse and track API failures","scanLimit":"10 requests per 60 seconds","service":"alexbet-bot","timestamp":"2026-04-23 06:55:21"}
+{"level":"info","message":"✅ Supabase tables verified","service":"alexbet-bot","timestamp":"2026-04-23 06:55:22"}
