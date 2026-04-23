@@ -1,6 +1,42 @@
-node_modules
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
 .env
 .env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+log/
+
+# Runtime
+dist/
+build/
+.cache/
+tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
-npm-debug.log
+
+# Testing
+coverage/
+.nyc_output/
+
+# Generated files (exports, sample data)
 exports/
+*.json.bak
+
+# OS
+Thumbs.db
+.directory
