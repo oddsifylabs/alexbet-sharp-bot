@@ -351,8 +351,8 @@ function handleHelp(msg) {
 
 📥 *EXPORT (Premium)*
 /export - Export scan results
+  • /export_txt - Download as TXT (recommended)
   • /export_csv - Download as CSV
-  • /export_txt - Download as text
   • /export_json - Download as JSON
 
 ⚙️ *SETTINGS*

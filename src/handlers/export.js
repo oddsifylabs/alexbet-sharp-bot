@@ -50,7 +50,7 @@ async function handleExport(msg) {
       return;
     }
 
-    const message = `📊 Export Your Latest Scan\\n\\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\\n\\nChoose format:\\n\\n/export_csv - Download as CSV (Excel)\\n/export_txt - Download as TXT (readable)\\n/export_json - Download as JSON (backup)`;
+    const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_txt - Download as TXT (recommended)\n/export_csv - Download as CSV (Excel)\n/export_json - Download as JSON (backup)`;
     bot.sendMessage(chatId, message);
   } catch (err) {
     logger.error('Error in /export:', err);
