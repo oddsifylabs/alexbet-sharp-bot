@@ -28,7 +28,7 @@ function formatGem(gem, index) {
     rank: index + 1,
     sport: gem.sport || 'N/A',
     market: gem.market || gem.betType || 'N/A',
-    pick: gem.pick || 'N/A',
+    signal: gem.signal || 'N/A',
     odds: gem.odds || 'N/A',
     edge_percent: (gem.edge_percent || gem.edge) ? toNumber(gem.edge_percent || gem.edge).toFixed(2) : 'N/A',
     ev_percent: (gem.ev_percent || gem.ev) ? toNumber(gem.ev_percent || gem.ev).toFixed(2) : 'N/A',
@@ -159,7 +159,7 @@ function exportToTXT(gems, userId) {
 
     formattedGems.forEach(gem => {
       txt += `┌─ #${gem.rank} ────────────────────────────────────────────────────────────┐\n`;
-      txt += `│ Sport: ${gem.sport.padEnd(8)} Market: ${gem.market.padEnd(12)} Pick: ${gem.pick.substring(0, 20).padEnd(20)} │\n`;
+      txt += `│ Sport: ${gem.sport.padEnd(8)} Market: ${gem.market.padEnd(12)} Signal: ${gem.signal.substring(0, 18).padEnd(18)} │\\n`;
       txt += `│ Odds: ${gem.odds.toString().padEnd(8)} Book: ${gem.best_book.padEnd(15)} Books: ${gem.books_compared}             │\n`;
       txt += `│ Edge: ${gem.edge_percent}%${' '.repeat(6)} EV: ${gem.ev_percent}% │\n`;
       txt += `│ Kelly: ${gem.kelly_percent}% (${gem.kelly_stake} stake) | Implied: ${gem.implied_probability}% │\n`;

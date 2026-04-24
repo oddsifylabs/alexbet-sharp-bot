@@ -5,7 +5,7 @@
 
 const https = require('https');
 const { americanToImpliedProb, americanToDecimal } = require('./odds-conversion');
-const { formatGameDateTime, getOutcomeKey, formatPickLabel } = require('./formatting');
+const { formatGameDateTime, getOutcomeKey, formatSignalLabel } = require('./formatting');
 
 const ODDS_API_KEY = process.env.ODDS_API_KEY;
 
@@ -171,7 +171,7 @@ async function fetchRealGems(bankroll = 100, timezone = 'America/New_York') {
                     const betTypeMap = { 'ML': 'MONEYLINE', 'Spread': 'SPREAD', 'Total': 'TOTAL' };
                     allGems.push({
                       id: `${game.id}_${market}_${getOutcomeKey(outcome, market)}`,
-                      pick: formatPickLabel(outcome, market),
+                      signal: formatSignalLabel(outcome, market),
                       odds: bestPrice,
                       edge: Number(edge.toFixed(2)),
                       ev: Number((ev * 100).toFixed(2)),

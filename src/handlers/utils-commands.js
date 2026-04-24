@@ -166,7 +166,7 @@ Integrate with Excel, Airtable, or custom tools:
 *Endpoints:*
 \`GET /api/bets\` — Your bets
 \`GET /api/stats\` — Performance stats
-\`GET /api/picks\` — Today's gems
+\`GET /api/signals\` — Today's gems
 \`POST /api/bets\` — Create bet
 \`GET /api/health\` — Health check
 

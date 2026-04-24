@@ -267,7 +267,7 @@ function registerPaymentHandlers(bot) {
 • Timezone support
 
 ✅ **CHANNEL Features**
-• Daily sharp picks analysis
+• Daily sharp signals analysis
 • Weekly strategy deep dives
 • Community discussions
 • Q&A sessions

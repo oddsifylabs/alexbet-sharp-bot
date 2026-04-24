@@ -105,7 +105,7 @@ async function handleExportCSV(msg) {
     const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
-      pick: gem.pick || 'N/A',
+      signal: gem.signal || 'N/A',
       odds: gem.odds || 'N/A',
       edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
       ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
@@ -185,7 +185,7 @@ async function handleExportTXT(msg) {
     const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
-      pick: gem.pick || 'N/A',
+      signal: gem.signal || 'N/A',
       odds: gem.odds || 'N/A',
       edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
       ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
@@ -267,7 +267,7 @@ async function handleExportJSON(msg) {
     const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
-      pick: gem.pick || 'N/A',
+      signal: gem.signal || 'N/A',
       odds: gem.odds || 'N/A',
       edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
       ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',

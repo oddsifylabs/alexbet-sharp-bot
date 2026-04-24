@@ -82,20 +82,20 @@ Choose your subscription tier:
 **💎 Monthly ($9.99)**
 • Full bot access for 30 days
 • Unlimited gem scanning
-• Export all picks (no limits)
+• Export all signals (no limits)
 • Real-time updates
 
 **🚀 Yearly ($99.99)**
 • Full bot access for 365 days
 • Unlimited gem scanning
-• Export all picks (no limits)
+• Export all signals (no limits)
 • Real-time updates
 • ~17% discount vs monthly
 
 **👑 Lifetime ($999)**
 • Full bot access forever
 • Unlimited gem scanning
-• Export all picks (no limits)
+• Export all signals (no limits)
 • Real-time updates
 • Priority support
 
@@ -241,7 +241,7 @@ async function handleSuccessfulPayment(msg, bot) {
 
 **Next Steps:**
 1. Use /scan to find top gems
-2. Use /export to download picks
+2. Use /export to download signals
 3. Use /status to check subscription
 
 Questions? Contact support.
