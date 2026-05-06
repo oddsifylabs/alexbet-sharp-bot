@@ -166,7 +166,7 @@ Integrate with Excel, Airtable, or custom tools:
 *Endpoints:*
 \`GET /api/bets\` — Your bets
 \`GET /api/stats\` — Performance stats
-\`GET /api/picks\` — Today's gems
+\`GET /api/signals\` — Today's gems
 \`POST /api/bets\` — Create bet
 \`GET /api/health\` — Health check
 
@@ -351,8 +351,8 @@ function handleHelp(msg) {
 
 📥 *EXPORT (Premium)*
 /export - Export scan results
+  • /export_txt - Download as TXT (recommended)
   • /export_csv - Download as CSV
-  • /export_txt - Download as text
   • /export_json - Download as JSON
 
 ⚙️ *SETTINGS*

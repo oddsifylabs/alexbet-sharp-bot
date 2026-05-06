@@ -1,6 +1,6 @@
 /**
  * Formatting utilities
- * Handles game dates, pick labels, sport emojis, and formatting
+ * Handles game dates, signal labels, sport emojis, and formatting
  */
 
 function formatGameDateTime(dateString, timezone = 'America/New_York') {
@@ -40,7 +40,7 @@ function getOutcomeKey(outcome, market) {
   return `${outcome.name}`;
 }
 
-function formatPickLabel(outcome, market) {
+function formatSignalLabel(outcome, market) {
   if (market === 'spreads' && outcome.point != null) {
     const point = Number(outcome.point);
     return `${outcome.name} ${point > 0 ? '+' : ''}${point}`;
@@ -66,6 +66,6 @@ function getSportEmoji(sport) {
 module.exports = {
   formatGameDateTime,
   getOutcomeKey,
-  formatPickLabel,
+  formatSignalLabel,
   getSportEmoji
 };

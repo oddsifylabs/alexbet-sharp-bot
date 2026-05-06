@@ -50,7 +50,7 @@ async function handleExport(msg) {
       return;
     }
 
-    const message = `📊 Export Your Latest Scan\\n\\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\\n\\nChoose format:\\n\\n/export_csv - Download as CSV (Excel)\\n/export_txt - Download as TXT (readable)\\n/export_json - Download as JSON (backup)`;
+    const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_txt - Download as TXT (recommended)\n/export_csv - Download as CSV (Excel)\n/export_json - Download as JSON (backup)`;
     bot.sendMessage(chatId, message);
   } catch (err) {
     logger.error('Error in /export:', err);
@@ -105,7 +105,7 @@ async function handleExportCSV(msg) {
     const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
-      pick: gem.pick || 'N/A',
+      signal: gem.signal || 'N/A',
       odds: gem.odds || 'N/A',
       edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
       ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
@@ -185,7 +185,7 @@ async function handleExportTXT(msg) {
     const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
-      pick: gem.pick || 'N/A',
+      signal: gem.signal || 'N/A',
       odds: gem.odds || 'N/A',
       edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
       ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',
@@ -267,7 +267,7 @@ async function handleExportJSON(msg) {
     const gems = gemsToExport.map(gem => ({
       sport: gem.sport || 'N/A',
       market: gem.betType || 'N/A',
-      pick: gem.pick || 'N/A',
+      signal: gem.signal || 'N/A',
       odds: gem.odds || 'N/A',
       edge_percent: gem.edge ? gem.edge.toFixed(2) : 'N/A',
       ev_percent: gem.ev ? gem.ev.toFixed(2) : 'N/A',

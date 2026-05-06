@@ -179,7 +179,7 @@ async function handleScan(msg) {
           analyzedGems.push(gem);
           logger.debug('Claude analysis complete for game', {
             userId,
-            pick: gem.pick,
+            signal: gem.signal,
             edge: analysis.edge,
             model: analysis.model,
             confidence: analysis.confidence
@@ -187,7 +187,7 @@ async function handleScan(msg) {
         } catch (err) {
           logger.warn('Claude analysis failed for game', {
             userId,
-            pick: gem.pick,
+            signal: gem.signal,
             error: err.message
           });
           analyzedGems.push(gem);
@@ -261,7 +261,7 @@ async function handleScan(msg) {
 
     // Calculate summary stats FIRST
     const topGem = topGems[0];
-    const topGemDisplay = topGem ? `${topGem.pick} @ ${topGem.odds > 0 ? '+' : ''}${topGem.odds}` : 'N/A';
+    const topGemDisplay = topGem ? `${topGem.signal} @ ${topGem.odds > 0 ? '+' : ''}${topGem.odds}` : 'N/A';
     
     const avgEdge = (topGems.reduce((sum, g) => sum + g.edge, 0) / topGems.length).toFixed(2);
     const avgConfidence = Math.round(topGems.reduce((sum, g) => {
@@ -291,7 +291,7 @@ async function handleScan(msg) {
       // Game info at top, then pick details
       mainMsg += `${gem.game}\n`;
       mainMsg += `${gameDate} @ ${gameTime}\n\n`;
-      mainMsg += `${getSportEmoji(gem.sport)} *${gem.betType}* → *${gem.pick}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}\n`;
+      mainMsg += `${getSportEmoji(gem.sport)} *${gem.betType}* → *${gem.signal}* @ ${gem.odds > 0 ? '+' : ''}${gem.odds}\\n`;
       mainMsg += `⚡ Edge: +${displayEdge}% | 🎯 Confidence: ${confidence}% | 📈 EV: +${gem.ev}%\n`;
       mainMsg += `💰 Kelly: $${gem.kelly} | Conservative: $${gem.conservative.two}\n`;
       mainMsg += `📊 ${gem.book} (${gem.booksCompared} books)\n\n`;
