@@ -50,7 +50,7 @@ async function handleExport(msg) {
       return;
     }
 
-    const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} gems from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_txt - Download as TXT (recommended)\n/export_csv - Download as CSV (Excel)\n/export_json - Download as JSON (backup)`;
+    const message = `📊 Export Your Latest Scan\n\nYou have ${userScans.gems.length} signals from ${new Date(userScans.date).toLocaleString()}\n\nChoose format:\n\n/export_txt - Download as TXT (recommended)\n/export_csv - Download as CSV (Excel)\n/export_json - Download as JSON (backup)`;
     bot.sendMessage(chatId, message);
   } catch (err) {
     logger.error('Error in /export:', err);
@@ -98,7 +98,7 @@ async function handleExportCSV(msg) {
     let gemsToExport = userScans.gems.slice(0, maxGems);
     if (userScans.gems.length > maxGems && !isAdmin(userId)) {
       const subscription = await getSubscriptionDetails(userId);
-      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} gems. /subscribe for more`);
+      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} signals. /subscribe for more`);
     }
 
     // Convert gems to export format
@@ -122,7 +122,7 @@ async function handleExportCSV(msg) {
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📊 CSV Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`,
+      caption: `📊 CSV Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} signals exported`,
       filename: result.filename
     }, (err) => {
       if (err) {
@@ -178,7 +178,7 @@ async function handleExportTXT(msg) {
     let gemsToExport = userScans.gems.slice(0, maxGems);
     if (userScans.gems.length > maxGems && !isAdmin(userId)) {
       const subscription = await getSubscriptionDetails(userId);
-      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} gems. /subscribe for more`);
+      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} signals. /subscribe for more`);
     }
 
     // Convert gems to export format
@@ -198,13 +198,13 @@ async function handleExportTXT(msg) {
     }));
 
     // Create TXT
-    const result = exportToTXT(gems, userId);
+    const result = exportToTXT(gems, userId, userScans.date);
     
     // Send the actual file to Telegram using fs.createReadStream
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📋 TXT Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported`,
+      caption: `📋 TXT Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} signals exported`,
       filename: result.filename
     }, (err) => {
       if (err) {
@@ -260,7 +260,7 @@ async function handleExportJSON(msg) {
     let gemsToExport = userScans.gems.slice(0, maxGems);
     if (userScans.gems.length > maxGems && !isAdmin(userId)) {
       const subscription = await getSubscriptionDetails(userId);
-      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} gems. /subscribe for more`);
+      bot.sendMessage(chatId, `⚠️ ${subscription.tier} tier limited to ${maxGems} signals. /subscribe for more`);
     }
 
     // Convert gems to export format
@@ -284,7 +284,7 @@ async function handleExportJSON(msg) {
     const fileStream = fs.createReadStream(result.filepath);
     
     bot.sendDocument(chatId, fileStream, {
-      caption: `📄 JSON Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} gems exported (with metadata)`,
+      caption: `📄 JSON Export\\n\\n📥 File: ${result.filename}\\n💾 Size: ${(result.size / 1024).toFixed(2)} KB\\n✅ ${result.gemsCount} signals exported (with metadata)`,
       filename: result.filename
     }, (err) => {
       if (err) {

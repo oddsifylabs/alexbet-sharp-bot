@@ -109,37 +109,46 @@ function exportToCSV(gems, userId) {
  * Export scan results to TXT format (human-readable)
  * @param {Array} gems - Array of gem objects from /scan
  * @param {number} userId - User ID for filename
+ * @param {string} scanTimestamp - Optional ISO timestamp of when scan was run
  * @returns {Object} {filepath, filename, size}
  */
-function exportToTXT(gems, userId) {
+function exportToTXT(gems, userId, scanTimestamp) {
   try {
     if (!gems || gems.length === 0) {
-      throw new Error('No gems to export');
+      throw new Error('No signals to export');
     }
 
     const timestamp = new Date().toISOString();
     const filename = `alexbet-scan-${userId}-${timestamp.split('T')[0]}.txt`;
     const filepath = path.join(EXPORTS_DIR, filename);
 
-    // Format gems
-    const formattedGems = gems.map((gem, index) => formatGem(gem, index));
+    // Format signals
+    const formattedSignals = gems.map((gem, index) => formatGem(gem, index));
+
+    // Use scan timestamp if provided, otherwise use current time
+    // Display in UTC to match scan source
+    const displayTime = scanTimestamp ? new Date(scanTimestamp) : new Date();
+    const timeStr = displayTime.toISOString().replace('T', ' ').substring(0, 19);
+    const [datePart, timePart] = timeStr.split(' ');
+    const [year, month, day] = datePart.split('-');
+    const formattedDateTime = `${month}/${day}/${year}, ${timePart} UTC`;
 
     // Build TXT content
     let txt = '';
     txt += '╔════════════════════════════════════════════════════════════════════════╗\n';
-    txt += '║             AlexBET SHARP BOT - +EV SCAN RESULTS                       ║\n';
-    txt += `║             Generated: ${new Date().toLocaleString()}                        ║\n`;
+    txt += '║            AlexBET SIGNAL PRO - +EV SCAN RESULTS                       ║\n';
+    txt += `║             Generated: ${formattedDateTime.padEnd(24)} ║\n`;
     txt += '╚════════════════════════════════════════════════════════════════════════╝\n\n';
 
     txt += `📊 SUMMARY\n`;
     txt += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-    txt += `Total Gems Found: ${formattedGems.length}\n`;
+    txt += `Total Signals Found: ${formattedSignals.length}\n`;
     txt += `Export Date: ${timestamp.split('T')[0]}\n`;
     txt += `Export Time: ${timestamp.split('T')[1].split('.')[0]}\n\n`;
 
     // Group by sport
     const bySport = {};
-    formattedGems.forEach(gem => {
+    formattedSignals.forEach(gem => {
       if (!bySport[gem.sport]) {
         bySport[gem.sport] = [];
       }
@@ -149,7 +158,9 @@ function exportToTXT(gems, userId) {
     txt += `📈 BREAKDOWN BY SPORT\n`;
     txt += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
     Object.entries(bySport).forEach(([sport, items]) => {
-      txt += `${sport}: ${items.length} gems\n`;
+      const count = items.length;
+      const label = count === 1 ? 'signal' : 'signals';
+      txt += `${sport}: ${count} ${label}\n`;
     });
     txt += '\n\n';
 
@@ -157,7 +168,7 @@ function exportToTXT(gems, userId) {
     txt += `💎 DETAILED RESULTS (Ranked by Edge %)\n`;
     txt += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
 
-    formattedGems.forEach(gem => {
+    formattedSignals.forEach((gem, index) => {
       // Box width is 67 chars (including borders). Content width is 65 chars.
       // Format: │ <65 chars> │
       const rankHeader = `#${gem.rank}`;
