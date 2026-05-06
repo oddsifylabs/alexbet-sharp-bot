@@ -158,13 +158,44 @@ function exportToTXT(gems, userId) {
     txt += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
 
     formattedGems.forEach(gem => {
-      txt += `┌─ #${gem.rank} ────────────────────────────────────────────────────────────┐\n`;
-      txt += `│ Sport: ${gem.sport.padEnd(8)} Market: ${gem.market.padEnd(12)} Pick: ${gem.pick.substring(0, 20).padEnd(20)} │\n`;
-      txt += `│ Odds: ${gem.odds.toString().padEnd(8)} Book: ${gem.best_book.padEnd(15)} Books: ${gem.books_compared}             │\n`;
-      txt += `│ Edge: ${gem.edge_percent}%${' '.repeat(6)} EV: ${gem.ev_percent}% │\n`;
-      txt += `│ Kelly: ${gem.kelly_percent}% (${gem.kelly_stake} stake) | Implied: ${gem.implied_probability}% │\n`;
-      txt += `│ Conservative 2%: ${gem.conservative_2pct}                                │\n`;
-      txt += `└────────────────────────────────────────────────────────────────────┘\n\n`;
+      // Box width is 67 chars (including borders). Content width is 65 chars.
+      // Format: │ <65 chars> │
+      const rankHeader = `#${gem.rank}`;
+      const dashes = '─'.repeat(65 - 2 - rankHeader.length); // 2 = " " + " " around rank
+      
+      txt += `┌─ ${rankHeader} ${dashes}┐\n`;
+      
+      // Helper to pad line to exactly 65 chars
+      const padLine = (str) => str.padEnd(65);
+      
+      // Line 1: Sport | Market | Pick (truncated to fit)
+      const sport = (gem.sport || 'N/A').substring(0, 5);
+      const market = (gem.market || 'N/A').substring(0, 9);
+      const pick = (gem.pick || 'N/A').substring(0, 44);
+      txt += `│ ${padLine(`Sport: ${sport} | Market: ${market} | ${pick}`)} │\n`;
+      
+      // Line 2: Odds | Book | Books count
+      const odds = gem.odds ? gem.odds.toString().substring(0, 7) : 'N/A';
+      const book = (gem.best_book || 'N/A').substring(0, 13);
+      const booksCount = gem.books_compared || 5;
+      txt += `│ ${padLine(`Odds: ${odds} | Book: ${book} | Books: ${booksCount}`)} │\n`;
+      
+      // Line 3: Edge | EV
+      const edge = gem.edge_percent || 'N/A';
+      const ev = gem.ev_percent || 'N/A';
+      txt += `│ ${padLine(`Edge: ${edge}% | EV: ${ev}%`)} │\n`;
+      
+      // Line 4: Kelly | Implied
+      const kelly = gem.kelly_percent || 'N/A';
+      const kellyStake = gem.kelly_stake || 'N/A';
+      const implied = gem.implied_probability || 'N/A';
+      txt += `│ ${padLine(`Kelly: ${kelly}% (${kellyStake}) | Implied: ${implied}%`)} │\n`;
+      
+      // Line 5: Conservative 2%
+      const conservative = gem.conservative_2pct || 'N/A';
+      txt += `│ ${padLine(`Conservative 2%: ${conservative}`)} │\n`;
+      
+      txt += `└${'─'.repeat(65)}┘\n\n`;
     });
 
     txt += '\n';
