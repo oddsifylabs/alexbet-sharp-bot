@@ -28,7 +28,7 @@ function formatGem(gem, index) {
     rank: index + 1,
     sport: gem.sport || 'N/A',
     market: gem.market || gem.betType || 'N/A',
-    pick: gem.pick || 'N/A',
+    signal: gem.signal || 'N/A',
     odds: gem.odds || 'N/A',
     edge_percent: (gem.edge_percent || gem.edge) ? toNumber(gem.edge_percent || gem.edge).toFixed(2) : 'N/A',
     ev_percent: (gem.ev_percent || gem.ev) ? toNumber(gem.ev_percent || gem.ev).toFixed(2) : 'N/A',
@@ -168,11 +168,11 @@ function exportToTXT(gems, userId) {
       // Helper to pad line to exactly 65 chars
       const padLine = (str) => str.padEnd(65);
       
-      // Line 1: Sport | Market | Pick (truncated to fit)
+      // Line 1: Sport | Market | Signal (truncated to fit)
       const sport = (gem.sport || 'N/A').substring(0, 5);
       const market = (gem.market || 'N/A').substring(0, 9);
-      const pick = (gem.pick || 'N/A').substring(0, 44);
-      txt += `│ ${padLine(`Sport: ${sport} | Market: ${market} | ${pick}`)} │\n`;
+      const signal = (gem.signal || 'N/A').substring(0, 44);
+      txt += `│ ${padLine(`Sport: ${sport} | Market: ${market} | ${signal}`)} │\n`;
       
       // Line 2: Odds | Book | Books count
       const odds = gem.odds ? gem.odds.toString().substring(0, 7) : 'N/A';
